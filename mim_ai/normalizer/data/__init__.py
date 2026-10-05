@@ -1,0 +1,1 @@
+"""Package data (YAML dictionaries). Load via importlib.resources."""

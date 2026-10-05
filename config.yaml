@@ -1,0 +1,72 @@
+# mim_ai/config.yaml
+# ---------------------------------------------------------------------------
+# Copy this file next to your app, edit the values you care about,
+# and load it with:
+#
+#     from mim_ai.normalizer import Normalizer
+#     from mim_ai.normalizer.schema import NormalizerConfig
+#     import yaml
+#
+#     cfg = NormalizerConfig(**yaml.safe_load(open("config.yaml"))["normalizer"])
+#     norm = Normalizer.from_config(cfg)
+#
+# Everything has a sensible default. You only need to override what
+# your application actually cares about.
+# ---------------------------------------------------------------------------
+
+normalizer:
+
+  # =========================================================================
+  # Layer 1 — Universal Text Cleaning
+  # Pure Python, near-zero latency. Language-agnostic.
+  # =========================================================================
+  cleaning:
+    strip_urls:      false    # true -> drop https://... and www....
+    strip_mentions:  false    # true -> drop @username
+    strip_hashtags:  false    # true -> drop #tag
+    strip_tatweel:   true     # drop decorative ـ (kashida)
+
+  # =========================================================================
+  # Layer 2 — Rule-Based Darija Normalization
+  # Dict + regex, <5 ms. Handles Arabic-script unification AND
+  # whole-word Arabizi lookups. Emits `oov_arabizi` flag for Layer 3.
+  # =========================================================================
+  rules:
+    # --- Arabic-script orthography toggles ---
+    unify_alef:         true    # أ إ آ ٱ -> ا
+    unify_ya:           true    # ى ی   -> ي
+    unify_ta_marbuta:   true    # ة     -> ه
+    remove_diacritics:  true    # strip fatha/damma/kasra/sukun/shadda
+    normalize_digits:   true    # ٠١٢٣ -> 0123
+
+    # --- Developer overrides (paths are relative to this file) ---
+    # Merged ON TOP of the package defaults. Your keys always win.
+    arabizi_dict_path:  "./darija/arabizi.yaml"    # null -> use package base only
+    skip_words_path:    "./darija/skip_words.yaml" # FR/EN words that look like Arabizi
+    arabic_rules_path:  null                       # null -> use built-in Arabic tables
+
+  # =========================================================================
+  # Layer 3 — LLM Normalizer (optional)
+  # Off by default. Flip `enabled: true` when you need top-shelf quality
+  # and can afford 200–800 ms per call.
+  # =========================================================================
+  llm:
+    enabled:            false
+
+    # Trigger mode:
+    #   "always"    -> every call. Best quality, highest cost.
+    #   "on_oov"    -> only when Layer 2 saw unresolvable Arabizi. (default)
+    #   "on_mixed"  -> only when input mixes Arabic + Latin scripts.
+    trigger:            "on_oov"
+
+    # Any OpenAI-compatible endpoint works. Recommended: MNTRA-Mistral.
+    model:              "mntra/mistral-darija"
+    endpoint:           "https://api.mntra.ma/v1/chat/completions"
+    api_key_env:        "MNTRA_API_KEY"
+
+    # Hard latency budget. On timeout we return Layer 2's output
+    # transparently — the caller never sees an error.
+    timeout_ms:         800
+    fallback_on_timeout: true
+
+    max_tokens:         256

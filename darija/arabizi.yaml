@@ -1,0 +1,23 @@
+# darija/arabizi.yaml
+# ---------------------------------------------------------------------------
+# Developer-specific Arabizi -> Arabic mappings.
+# Merged ON TOP of mim_ai/normalizer/data/arabizi_darija.yaml.
+# Keys are case-insensitive; lookup normalizes repeats and trailing digits.
+# ---------------------------------------------------------------------------
+
+# --- Domain jargon for this specific app (e.g. a delivery app) ---
+"livrizon":   "ليفريزون"
+"koli":       "كولي"
+"command":    "كوموند"
+"paiement":   "پايمون"
+
+# --- Local variants the base dict doesn't know ---
+"wakha":      "واخا"
+"wakhaa":     "واخا"
+"bezzaf":     "بزاف"
+"bezzaf3":    "بزاف"
+
+# --- Names / places common in your logs ---
+"casa":       "كازا"
+"rbat":       "رباط"
+"mrhba":      "مرحبا"

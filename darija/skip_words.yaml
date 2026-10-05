@@ -1,0 +1,9 @@
+# darija/skip_words.yaml
+# ---------------------------------------------------------------------------
+# Latin-script tokens that must NOT be treated as Arabizi.
+# Merged with the package default skip list. Case-insensitive.
+# ---------------------------------------------------------------------------
+
+- "livraison"    # French, but starts with "li" like many Arabizi words
+- "salamander"   # English word that collides with "salam"
+- "bghit"        # UNLESS you want this normalized — leave out if so

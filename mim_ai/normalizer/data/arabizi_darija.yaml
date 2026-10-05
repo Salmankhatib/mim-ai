@@ -1,0 +1,24 @@
+# Base Arabizi -> Arabic-script dictionary.
+# Developer overrides via config.rules.arabizi_dict_path.
+# Lookup keys are normalized (lowercase, repeats collapsed).
+
+# Greetings
+"salam": "سلام"
+"slm": "سلام"
+"labas": "لاباس"
+"lbas": "لاباس"
+
+# Common verbs / particles
+"bghit": "بغيت"
+"bgha": "بغى"
+"kayn": "كاين"
+"kayen": "كاين"
+"makayn": "ماكاين"
+"makayen": "ماكاين"
+"wa7ed": "واحد"
+"wahed": "واحد"
+
+# Negation
+"me3lich": "معلش"
+"ma3lich": "معلش"
+"m3lich": "معلش"

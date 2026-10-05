@@ -1,0 +1,17 @@
+# Overridable Arabic-script substitution tables.
+# Anything absent here falls back to the defaults in arabic_rules.py.
+
+alef_forms:  { "أ": "ا", "إ": "ا", "آ": "ا", "ٱ": "ا" }
+ya_forms:    { "ى": "ي" }
+ta_marbuta:  { "ة": "ه" }
+arabic_indic_digits:
+  "٠": "0"
+  "١": "1"
+  "٢": "2"
+  "٣": "3"
+  "٤": "4"
+  "٥": "5"
+  "٦": "6"
+  "٧": "7"
+  "٨": "8"
+  "٩": "9"
