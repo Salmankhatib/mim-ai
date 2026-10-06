@@ -1,313 +1,310 @@
 """
-mim_ai.normalizer.arabic_rules
+mim_ai.normalizer.darija_rules
 ==============================
 
-Arabic-script orthographic rules for Layer 2.
+Token-level Darija normalization. This is the actual "brain" of
+Layer 2 — it decides, for each token in the input, which sub-rule
+to apply.
 
-Design principles
------------------
-* Every rule here is **safe for BOTH MSA and Darija**. We never apply
-  a rule that would corrupt MSA, because Layer 2 cannot tell them apart
-  (and does not need to — both benefit from the same unification).
+Position in the pipeline
+------------------------
+    Layer 1 (layers/cleaning.py)
+        ↓  cleaned text, URLs replaced with <URL_N> placeholders
+    Layer 2 (THIS FILE, via layers/rules.py)
+        ↓  normalized text, OOV flag emitted
+    Layer 3 (layers/llm.py)   — optional
+        ↓  LLM-normalized text
+    Normalizer.normalize() restores URLs and returns.
 
-* Rules are **idempotent**. Running the normalizer twice on the same
-  text must produce the same output as running it once. This matters
-  because Layer 3 (LLM) may round-trip through Layer 2 again.
+This module contains NO character-level tables (they live in
+`arabic_rules.py`) and NO pipeline plumbing (it lives in
+`layers/rules.py`). It is pure: text + config -> text + report.
 
-* Rules are **character-level substitutions or regex rewrites**, never
-  contextual decisions. Contextual logic belongs in `darija_rules.py`.
+Design — the per-token dispatch
+-------------------------------
+For every whitespace-delimited token we compute its script and
+route it through exactly one branch:
 
-* Every rule is exposed as a named function so developers can compose
-  their own rule chains in `darija_rules.py` without touching this file.
+    script == "arabic"
+        -> arabic_rules.apply_arabic_rules(token, **config_flags)
+        Emits rule_applications += 1 if the token changed.
 
-What lives here
+    script == "latin"
+        -> 1. arabizi.is_skipped(token)?  -> leave untouched
+           2. arabizi.lookup(core)?      -> replace with canonical
+           3. otherwise                  -> leave untouched, flag OOV
+
+    script == "mixed"   (Arabic + Latin in one token)
+        -> leave untouched, flag mixed_script
+           (splitting substrings inside a token is heuristic and
+            mis-fires on emoji sequences and digit-suffixed Arabizi)
+
+    script == "other"   (digits, punctuation, emoji, symbols)
+        -> leave untouched
+
+The `oov_arabizi` flag is the hand-off to Layer 3: it means "there
+was Latin-script text I could not resolve as either French/English
+or known Arabizi." The LLM layer uses this as its default trigger.
+
+Report contract
 ---------------
-    unify_alef            أ إ آ ٱ  -> ا
-    unify_ya              ى         -> ي
-    unify_ta_marbuta      ة         -> ه
-    remove_tashkeel       strip Arabic diacritics
-    normalize_arabic_digits   ٠١٢٣ -> 0123
-    strip_tatweel         remove ـ (kashida)
-    strip_control_chars   remove \x00-\x1F except \n
-    collapse_whitespace   runs of space -> single space
+`normalize_text()` returns `(text, delta)` where `delta` is a plain
+dict with keys:
+    dictionary_hits     int
+    rule_applications   int
+    oov_arabizi         bool
+    mixed_script        bool
 
-What does NOT live here
------------------------
-    * Arabizi transliteration (see `arabizi.py`)
-    * Token splitting / script detection (see `layers/rules.py`)
-    * Language-specific greetings / fillers (see `darija_rules.py`)
-    * Any rule that depends on surrounding tokens
+These are merged into the pipeline-wide `NormalizationReport` by
+`layers/rules.py`. This file never touches the report object itself.
+
+Usage
+-----
+    from mim_ai.normalizer.darija_rules import normalize_text
+    from mim_ai.normalizer.schema import RulesConfig
+
+    cfg = RulesConfig()
+    clean, delta = normalize_text("salam, bghit n3ref wa7ed", cfg)
 """
 
 from __future__ import annotations
 
 import re
-import unicodedata
-from typing import Iterable
+from dataclasses import dataclass
+
+from .layers.arabic_rules import apply_arabic_rules
+from .arabizi import ArabiziDictionary
+from .schema import RulesConfig
+from ..utils.unicode_helpers import script_of
 
 
 # ---------------------------------------------------------------------------
-# Character tables
+# Tokenization
 # ---------------------------------------------------------------------------
-# These are the DEFAULTS. Developers can override any table via
-# `config.rules.arabic_rules_path` (see `dictionary.py` for the loader).
-
-ALEF_FORMS: dict[str, str] = {
-    "\u0623": "\u0627",   # أ  -> ا
-    "\u0625": "\u0627",   # إ  -> ا
-    "\u0622": "\u0627",   # آ  -> ا
-    "\u0671": "\u0627",   # ٱ  -> ا
-    "\u0672": "\u0627",   # ٲ  -> ا
-    "\u0673": "\u0627",   # ٳ  -> ا
-}
-
-YA_FORMS: dict[str, str] = {
-    "\u0649": "\u064A",   # ى  -> ي   (Alef Maksura -> Ya)
-    "\u06CC": "\u064A",   # ی  -> ي   (Persian Yeh)
-}
-
-TA_MARBUTA_FORMS: dict[str, str] = {
-    "\u0629": "\u0647",   # ة  -> ه
-}
-
-ARABIC_INDIC_DIGITS: dict[str, str] = {
-    "\u0660": "0",   # ٠
-    "\u0661": "1",   # ١
-    "\u0662": "2",   # ٢
-    "\u0663": "3",   # ٣
-    "\u0664": "4",   # ٤
-    "\u0665": "5",   # ٥
-    "\u0666": "6",   # ٦
-    "\u0667": "7",   # ٧
-    "\u0668": "8",   # ٨
-    "\u0669": "9",   # ٩
-    "\u06F0": "0",   # ۰  (Extended Arabic-Indic, Persian)
-    "\u06F1": "1",   # ۱
-    "\u06F2": "2",   # ۲
-    "\u06F3": "3",   # ۳
-    "\u06F4": "4",   # ۴
-    "\u06F5": "5",   # ۵
-    "\u06F6": "6",   # ۶
-    "\u06F7": "7",   # ۷
-    "\u06F8": "8",   # ۸
-    "\u06F9": "9",   # ۹
-}
+# We split on whitespace boundaries but KEEP the whitespace tokens so
+# we can rebuild the string byte-for-byte. `\s+` matches any Unicode
+# whitespace, which is what Layer 1 has already collapsed to plain
+# spaces — but we stay tolerant in case Layer 1 was disabled.
+_SPLIT_WS_RE = re.compile(r"(\s+)")
 
 
 # ---------------------------------------------------------------------------
-# Regex patterns
+# Punctuation peeling (for Arabizi dictionary lookup only)
 # ---------------------------------------------------------------------------
-# Tashkeel + Quranic marks. Kept as one character class so we do a single
-# pass instead of chaining multiple `.sub()` calls (measurably faster).
-TASHKEEL_RE = re.compile(
-    "["
-    "\u0610-\u061A"   # Arabic signs (Quranic)
-    "\u064B-\u065F"   # Standard tashkeel (fatha, damma, kasra, sukun…)
-    "\u0670"          # Superscript Alef
-    "\u06D6-\u06DC"   # Quranic annotation signs
-    "\u06DF-\u06E4"
-    "\u06E7\u06E8"
-    "\u06EA-\u06ED"
-    "]"
+# Arabizi writers glue punctuation to words: "bghit," "salam!" "wa7ed?"
+# The dictionary stores clean keys, so we strip surrounding punctuation
+# before lookup and reattach it after. Only ASCII + common Arabic
+# punctuation is peeled — we never peel Arabic letters, digits, or emoji.
+#
+# Note: this list is intentionally conservative. Adding characters here
+# affects the Arabizi lookup behavior for every caller.
+_PUNCT_CHARS = frozenset(
+    ".,!?;:\"'`()[]{}<>«»…،؛؟"      # ASCII + Arabic punctuation
+    "\u2018\u2019\u201c\u201d"        # curly quotes
+    "-–—"                             # hyphens / dashes
 )
 
-TATWEEL_RE = re.compile("\u0640+")
 
-# Control characters EXCEPT \n (kept for paragraph structure) and \t
-# (converted to space by whitespace collapse below).
-CONTROL_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
+# ---------------------------------------------------------------------------
+# Internal report accumulator
+# ---------------------------------------------------------------------------
+@dataclass
+class _Report:
+    """
+    Internal-only accumulator. Kept separate from the public
+    `NormalizationReport` in `normalizer.py` so this module has no
+    dependency on the pipeline's report object.
+    """
+    dictionary_hits: int = 0
+    rule_applications: int = 0
+    oov_arabizi: bool = False
+    mixed_script: bool = False
 
-WHITESPACE_RE = re.compile(r"[ \t\u00A0\u2000-\u200A\u202F\u205F\u3000]+")
-
-# Non-printable formatting marks often pasted from web pages.
-ZERO_WIDTH_RE = re.compile("[\u200B-\u200F\u202A-\u202E\uFEFF]")
+    def to_delta(self) -> dict:
+        """Convert to the plain-dict form expected by the pipeline."""
+        return {
+            "dictionary_hits":   self.dictionary_hits,
+            "rule_applications": self.rule_applications,
+            "oov_arabizi":       self.oov_arabizi,
+            "mixed_script":      self.mixed_script,
+        }
 
 
 # ---------------------------------------------------------------------------
-# Rule implementations
+# Public entry point
 # ---------------------------------------------------------------------------
-def unify_alef(token: str) -> str:
+def normalize_text(
+    text: str,
+    config: RulesConfig,
+    arabizi: ArabiziDictionary | None = None,
+) -> tuple[str, dict]:
     """
-    Collapse all Alef variants to bare Alef (ا).
+    Normalize a full string of Darija text.
 
-    Rationale: Moroccan writers use أ/إ/آ/ا interchangeably, and MSA
-    readers treat them as the same letter in practice. Unifying them
-    cuts vocabulary sparsity dramatically for downstream models.
+    Parameters
+    ----------
+    text : str
+        Output of Layer 1 (already cleaned, URLs already protected
+        behind <URL_N> placeholders — the placeholders are pure ASCII
+        and pass through this layer untouched).
+
+    config : RulesConfig
+        Layer 2 toggles: unify_alef, unify_ya, unify_ta_marbuta,
+        remove_diacritics, normalize_digits, plus dictionary paths.
+
+    arabizi : ArabiziDictionary, optional
+        Pre-loaded dictionary. If None, one is built from `config`.
+        Pass one in when calling in a hot loop (e.g. a server request
+        handler) to avoid rebuilding on every call.
+
+    Returns
+    -------
+    (normalized_text, report_delta)
+        `report_delta` is the plain dict described in the module
+        docstring.
     """
-    return _translate(token, ALEF_FORMS)
+    # Defensive: allow None / empty without raising.
+    if not text:
+        return text or "", _Report().to_delta()
 
+    if arabizi is None:
+        arabizi = ArabiziDictionary.from_config(config)
 
-def unify_ya(token: str) -> str:
-    """
-    Collapse Alef Maksura (ى) and Persian Yeh (ی) to standard Ya (ي).
+    report = _Report()
 
-    Note: we do NOT touch the final-ya vs. middle-ya distinction in
-    Egyptian/Levantine orthography — that is not a Darija concern.
-    """
-    return _translate(token, YA_FORMS)
+    # Split on whitespace while keeping the whitespace tokens, so we
+    # can rejoin losslessly.
+    parts = _SPLIT_WS_RE.split(text)
+    out_parts: list[str] = []
 
+    for part in parts:
+        # Whitespace chunks and empty strings pass through verbatim.
+        if not part or part.isspace():
+            out_parts.append(part)
+            continue
 
-def unify_ta_marbuta(token: str) -> str:
-    """
-    Collapse Ta Marbuta (ة) to Ha (ه).
+        normalized = _normalize_token(part, config, arabizi, report)
+        out_parts.append(normalized)
 
-    This is config-toggleable because some downstream tasks (e.g. MSA
-    parsing) prefer to keep ة intact. For Darija it is almost always
-    the right normalization — Darija rarely uses ة at all.
-    """
-    return _translate(token, TA_MARBUTA_FORMS)
-
-
-def remove_tashkeel(token: str) -> str:
-    """
-    Strip all Arabic diacritics (fatha, damma, kasra, sukun, shadda…).
-
-    Darija is almost never written with diacritics; when they appear
-    they are usually noise from a copy-paste out of a Quranic text or
-    an MSA article. Stripping them is safe.
-    """
-    return TASHKEEL_RE.sub("", token)
-
-
-def normalize_arabic_digits(token: str) -> str:
-    """
-    Convert Arabic-Indic digits (٠١٢٣…) and their Extended variants
-    (۰۱۲۳…) to ASCII digits (0123…).
-
-    Rationale: ASCII digits are what every downstream tokenizer,
-    regex, and model was trained on. Arabic-Indic digits are rare
-    enough in Moroccan text that unifying them costs nothing.
-    """
-    return _translate(token, ARABIC_INDIC_DIGITS)
-
-
-def strip_tatweel(token: str) -> str:
-    """
-    Remove the tatweel / kashida character (ـ).
-
-    It is purely decorative — writers insert it to stretch words for
-    justification. It inflates token length without adding meaning and
-    will wreck any subword tokenizer that has not seen it.
-    """
-    return TATWEEL_RE.sub("", token)
-
-
-def strip_control_chars(token: str) -> str:
-    """Remove non-printable control characters, preserving \\n."""
-    return CONTROL_RE.sub("", token)
-
-
-def strip_zero_width(token: str) -> str:
-    """
-    Remove zero-width and bidi-control characters.
-
-    These are the #1 cause of "why doesn't my string match?" bugs when
-    copy-pasting from web pages, PDFs, or WhatsApp.
-    """
-    return ZERO_WIDTH_RE.sub("", token)
-
-
-def collapse_whitespace(token: str) -> str:
-    """Collapse any run of whitespace characters to a single space."""
-    return WHITESPACE_RE.sub(" ", token)
+    return "".join(out_parts), report.to_delta()
 
 
 # ---------------------------------------------------------------------------
-# Composite rule chains — the ones Layer 2 actually calls
+# Per-token dispatch
 # ---------------------------------------------------------------------------
-def apply_arabic_rules(
+def _normalize_token(
     token: str,
-    *,
-    unify_alef_: bool = True,
-    unify_ya_: bool = True,
-    unify_ta_marbuta_: bool = True,
-    remove_diacritics: bool = True,
-    normalize_digits: bool = True,
+    config: RulesConfig,
+    arabizi: ArabiziDictionary,
+    report: _Report,
 ) -> str:
     """
-    Apply the standard Layer 2 rule chain to a single Arabic-script token.
+    Normalize a single whitespace-free token.
 
-    Order matters: we strip diacritics and tatweel *before* unifying
-    characters, so the unifiers see clean input. This is faster and
-    avoids edge cases like a shadda sitting between a Ta Marbuta and
-    the following letter.
-
-    Every step is gated by a keyword flag so callers can build custom
-    chains without duplicating logic. Defaults match the "recommended
-    Darija normalization" profile.
+    The four branches are ordered from most common to least common
+    (Arabic, Latin, mixed, other) — though in practice the script
+    check is O(len(token)) regardless, so ordering is about
+    readability, not performance.
     """
-    if remove_diacritics:
-        token = remove_tashkeel(token)
-    token = strip_tatweel(token)
-    token = strip_zero_width(token)
-    token = strip_control_chars(token)
+    script = script_of(token)
 
-    if unify_alef_:
-        token = unify_alef(token)
-    if unify_ya_:
-        token = unify_ya(token)
-    if unify_ta_marbuta_:
-        token = unify_ta_marbuta(token)
-    if normalize_digits:
-        token = normalize_arabic_digits(token)
+    # ---- Arabic script -----------------------------------------------------
+    if script == "arabic":
+        before = token
+        token = apply_arabic_rules(
+            token,
+            unify_alef_=config.unify_alef,
+            unify_ya_=config.unify_ya,
+            unify_ta_marbuta_=config.unify_ta_marbuta,
+            remove_diacritics=config.remove_diacritics,
+            normalize_digits=config.normalize_digits,
+        )
+        if token != before:
+            report.rule_applications += 1
+        return token
 
+    # ---- Latin script ------------------------------------------------------
+    if script == "latin":
+        # Skip-word check runs on the RAW token (before punctuation
+        # peel) because the skip list is a whole-token whitelist. A
+        # trailing comma should not change the skip decision.
+        if arabizi.is_skipped(token):
+            return token
+
+        # Peel punctuation, look up the core, reattach.
+        core, prefix, suffix = _split_punct(token)
+
+        # If the core is empty (token was all punctuation), nothing
+        # to do — return the original.
+        if not core:
+            return token
+
+        # Skip-word check on the peeled core too, in case the caller
+        # populated skip_words with entries that include punctuation.
+        if arabizi.is_skipped(core):
+            return token
+
+        canonical = arabizi.lookup(core)
+
+        if canonical is not None:
+            report.dictionary_hits += 1
+            return f"{prefix}{canonical}{suffix}"
+
+        # OOV: a Latin token that is neither a skip-word nor a known
+        # Arabizi form. It might be French, English, a typo, or
+        # genuinely ambiguous Arabizi. We leave it alone and flag it
+        # so Layer 3 knows there is unresolved Latin-script content.
+        report.oov_arabizi = True
+        return token
+
+    # ---- Mixed script (Arabic + Latin in one token) ------------------------
+    if script == "mixed":
+        # We do NOT try to split "bghitع" into "bghit" + "ع". Substring
+        # boundaries inside a token are heuristic and mis-fire on:
+        #   * emoji sequences (👨‍👩‍👧)
+        #   * Arabizi with digits ("bghit3")
+        #   * technical strings ("iPhone13", "COVID-19a")
+        # Leaving mixed tokens untouched is the conservative choice
+        # and keeps the normalizer idempotent.
+        report.mixed_script = True
+        return token
+
+    # ---- Other (digits, punctuation, emoji, symbols) -----------------------
+    # Nothing to normalize. Digits stay digits. Punctuation stays.
+    # Emoji stay. This branch is reached for "42", "...", "😊", "→".
     return token
 
 
-def apply_universal_clean(text: str) -> str:
-    """
-    Layer 1 entry point. Called once on the whole text before tokenizing.
-
-    Order:
-        1. Unicode NFC — must be first, so subsequent comparisons are
-           byte-stable.
-        2. Strip zero-width / bidi controls (they hide inside "spaces").
-        3. Strip other control chars (except \\n).
-        4. Collapse whitespace runs.
-    """
-    text = unicodedata.normalize("NFC", text)
-    text = strip_zero_width(text)
-    text = strip_control_chars(text)
-    text = collapse_whitespace(text)
-    return text.strip()
-
-
 # ---------------------------------------------------------------------------
-# Internals
+# Punctuation peeling helper
 # ---------------------------------------------------------------------------
-def _translate(token: str, table: dict[str, str]) -> str:
+def _split_punct(token: str) -> tuple[str, str, str]:
     """
-    Fast per-character translation.
+    Peel leading and trailing punctuation off a token.
 
-    `str.translate` with a pre-built table is ~3x faster than a Python
-    loop for short strings and avoids allocating intermediate lists.
-    We use a plain dict as input because callers may override tables.
+    Returns (core, prefix, suffix) such that:
+        prefix + core + suffix == token
+
+    Punctuation is identified by membership in `_PUNCT_CHARS`, which
+    contains ASCII and Arabic punctuation plus curly quotes and dashes.
+
+    Examples
+    --------
+        "bghit,"   -> ("bghit", "", ",")
+        "\"salam\"" -> ("salam", "\"", "\"")
+        "...salam!" -> ("salam", "...", "!")
+        "bghit"    -> ("bghit", "", "")
+        "..."      -> ("", "...", "")   # empty core — caller must guard
     """
-    if not any(c in table for c in token):
-        return token          # fast path: nothing to do
-    return token.translate(str.maketrans(table))
+    i, j = 0, len(token)
+    while i < j and token[i] in _PUNCT_CHARS:
+        i += 1
+    while j > i and token[j - 1] in _PUNCT_CHARS:
+        j -= 1
+    return token[i:j], token[:i], token[j:]
 
 
 # ---------------------------------------------------------------------------
 # Public surface
 # ---------------------------------------------------------------------------
-__all__ = [
-    # tables (overridable)
-    "ALEF_FORMS",
-    "YA_FORMS",
-    "TA_MARBUTA_FORMS",
-    "ARABIC_INDIC_DIGITS",
-    # individual rules
-    "unify_alef",
-    "unify_ya",
-    "unify_ta_marbuta",
-    "remove_tashkeel",
-    "normalize_arabic_digits",
-    "strip_tatweel",
-    "strip_control_chars",
-    "strip_zero_width",
-    "collapse_whitespace",
-    # composite chains
-    "apply_arabic_rules",
-    "apply_universal_clean",
-]
+__all__ = ["normalize_text"]

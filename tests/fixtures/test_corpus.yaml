@@ -1,0 +1,26 @@
+# Each entry: input -> expected output, with a comment on WHY.
+# Add to this file whenever a real user report reveals a bug.
+
+- input: "salam    khoya"
+  expected: "salam khoya"
+  why: "L1 whitespace collapse"
+
+- input: "je suis tres content"
+  expected: "je suis tres content"
+  why: "French must be a no-op"
+
+- input: "أَحْمَد"
+  expected: "احمد"
+  why: "L2 tashkeel removal + alef unification"
+
+- input: "معلمته"
+  expected: "معلمته"
+  why: "Ta Marbuta with possessive suffix must be preserved"
+
+- input: "chouf https://ex.ma bar"
+  expected: "chouf https://ex.ma bar"
+  why: "URL preserved by default"
+
+- input: "salam 👋"
+  expected: "salam 👋"
+  why: "Emoji untouched"

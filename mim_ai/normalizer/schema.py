@@ -9,14 +9,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from sqlalchemy import true
+
 
 @dataclass
 class CleaningConfig:
     """Layer 1 toggles."""
-    strip_urls: bool = False
+    strip_urls: bool = true
+    strip_tatweel: bool = true
     strip_mentions: bool = False
     strip_hashtags: bool = False
-    strip_tatweel: bool = True
+
 
 
 @dataclass
@@ -24,8 +27,8 @@ class RulesConfig:
     """Layer 2 toggles and dictionary paths."""
     unify_alef: bool = True
     unify_ya: bool = True
-    unify_ta_marbuta: bool = True
-    remove_diacritics: bool = True
+    unify_ta_marbuta: bool = False
+    remove_diacritics: bool = True  # ⚠️  see arabic_rules.unify_ta_marbuta
     normalize_digits: bool = True
 
     # Developer-supplied overrides (paths to YAML). Both optional.

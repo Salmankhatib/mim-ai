@@ -18,6 +18,7 @@ You are a Moroccan Darija normalizer. Normalize the following text:
 - Preserve French and English or other language words exactly
 - Preserve punctuation and code-switching structure
 - Output ONLY the normalized text, nothing else
+- Preserve <URL_N> placeholders exactly as they appear
 
 Text: {text}
 """
