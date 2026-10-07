@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 
 from sqlalchemy import true
 
+from mim_ai.audit.config import AuditConfig, NormalizerLogConfig
+
 
 @dataclass
 class CleaningConfig:
@@ -55,3 +57,12 @@ class NormalizerConfig:
     cleaning: CleaningConfig = field(default_factory=CleaningConfig)
     rules: RulesConfig = field(default_factory=RulesConfig)
     llm: LLMConfig = field(default_factory=LLMConfig)
+
+
+@dataclass
+class NormalizerConfig:
+    cleaning: CleaningConfig = field(default_factory=CleaningConfig)
+    rules:    RulesConfig    = field(default_factory=RulesConfig)
+    llm:      LLMConfig      = field(default_factory=LLMConfig)
+    audit:      AuditConfig         = field(default_factory=AuditConfig)
+    normalizer: NormalizerLogConfig = field(default_factory=NormalizerLogConfig)

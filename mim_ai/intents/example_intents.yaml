@@ -1,0 +1,49 @@
+# Example intents. Copy, extend, ship with your app.
+# The NAME is always English. Examples can be any language.
+
+intents:
+  - name: get_weather
+    description: Return the weather for a city.
+    tool: get_weather
+    examples:
+      - "chkoun l'weather f Casa"
+      - "كيفاش الجو فكازا"
+      - "quel temps à Casablanca"
+      - "what's the weather in Casablanca"
+      - "wa7ed chwiya dial l'hal f Rabat"
+
+  - name: set_reminder
+    description: Set a reminder for a future time.
+    tool: set_reminder
+    examples:
+      - "dkerni f 5h"
+      - "ذكرني في الخامسة"
+      - "rappel moi à 5h"
+      - "remind me at 5pm"
+      - "3ayet liya men ba3d"
+
+  - name: book_taxi
+    description: Book a taxi to a destination.
+    tool: book_taxi
+    examples:
+      - "bghit taxi l Casa centre"
+      - "بغيت طاكسي لكازا سنطر"
+      - "commande un taxi"
+      - "book a taxi to the center"
+
+  - name: check_order_status
+    description: Check the status of an existing order.
+    tool: check_order_status
+    examples:
+      - "fin kayna commande dyali"
+      - "فين كاينة الكوموند ديالي"
+      - "où est ma commande"
+      - "where is my order"
+
+  - name: greet
+    description: Greeting or small talk — no action needed.
+    examples:
+      - "salam"
+      - "السلام عليكم"
+      - "bonjour"
+      - "hello"
