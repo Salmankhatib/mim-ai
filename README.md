@@ -125,8 +125,4 @@ mim_ai/
 
 ```
 
-> **Note:** Every subsystem is optional. If your configuration only enables the normalizer, nothing else loads.
-
-```
-
-```
+> **Note:** Every subsystem is optional. If your configuration only enables the normalizer, nothing else loads. 
