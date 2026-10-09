@@ -70,7 +70,7 @@ Usage
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .layers.arabic_rules import apply_arabic_rules
 from .arabizi import ArabiziDictionary
@@ -110,15 +110,13 @@ _PUNCT_CHARS = frozenset(
 # ---------------------------------------------------------------------------
 @dataclass
 class _Report:
-    """
-    Internal-only accumulator. Kept separate from the public
-    `NormalizationReport` in `normalizer.py` so this module has no
-    dependency on the pipeline's report object.
-    """
+    """Internal-only accumulator for Layer 2."""
     dictionary_hits: int = 0
     rule_applications: int = 0
     oov_arabizi: bool = False
     mixed_script: bool = False
+    jargon_used: dict[str, int] = field(default_factory=dict)
+    jargon_skipped: dict[str, int] = field(default_factory=dict)
 
     def to_delta(self) -> dict:
         """Convert to the plain-dict form expected by the pipeline."""
@@ -127,6 +125,8 @@ class _Report:
             "rule_applications": self.rule_applications,
             "oov_arabizi":       self.oov_arabizi,
             "mixed_script":      self.mixed_script,
+            "jargon_used":       dict(self.jargon_used),
+            "jargon_skipped":    dict(self.jargon_skipped),
         }
 
 
@@ -248,6 +248,7 @@ def _normalize_token(
 
         if canonical is not None:
             report.dictionary_hits += 1
+            report.jargon_used[core] = report.jargon_used.get(core, 0) + 1
             return f"{prefix}{canonical}{suffix}"
 
         # OOV: a Latin token that is neither a skip-word nor a known
@@ -255,6 +256,7 @@ def _normalize_token(
         # genuinely ambiguous Arabizi. We leave it alone and flag it
         # so Layer 3 knows there is unresolved Latin-script content.
         report.oov_arabizi = True
+        report.jargon_skipped[core] = report.jargon_skipped.get(core, 0) + 1
         return token
 
     # ---- Mixed script (Arabic + Latin in one token) ------------------------

@@ -254,6 +254,11 @@ def apply_arabic_rules(
     return token
 
 
+def placeholder_urls(text: str) -> str:
+    """Mask URLs with a neutral placeholder so text-preserving rules stay safe."""
+    return re.sub(r"(?:https?|wss?|ftp)://\S+|www\.\S+", "<URL>", text, flags=re.IGNORECASE)
+
+
 def apply_universal_clean(text: str) -> str:
     """
     Layer 1 entry point. Called once on the whole text before tokenizing.
@@ -309,5 +314,6 @@ __all__ = [
     "collapse_whitespace",
     # composite chains
     "apply_arabic_rules",
+    "placeholder_urls",
     "apply_universal_clean",
 ]

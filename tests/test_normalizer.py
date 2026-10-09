@@ -223,3 +223,49 @@ class TestTextInvariants:
         assert report.mixed_script is False
         # xyzxyz is pure latin and not in dict — should flag OOV? maybe
         # adjust depending on your dict-hit definition
+
+
+class TestConfigAndWiring:
+
+    def test_example_yaml_is_the_default_loader_target(self):
+        from mim_ai import load_config
+
+        cfg = load_config("mimExemple.yaml")
+        assert cfg.normalizer.enabled is True
+        assert cfg.audit.enabled is True
+        assert cfg.logs.enabled is True
+
+    def test_logger_switches_are_config_driven(self):
+        from mim_ai import load_config
+
+        cfg = load_config("mimExemple.yaml")
+        cfg.audit.enabled = False
+        cfg.logs.enabled = False
+
+        assert cfg.audit.enabled is False
+        assert cfg.logs.enabled is False
+
+    def test_normalizer_llm_layer_stays_off_by_default(self):
+        from mim_ai import load_config
+
+        cfg = load_config("mimExemple.yaml")
+        assert cfg.normalizer.enabled is True
+        assert cfg.normalizer.llm.enabled is False
+
+    def test_chatbot_history_and_llm_params_are_config_driven(self):
+        from mim_ai.chatbot.config import ChatbotConfig
+        from mim_ai.chatbot import Chatbot
+
+        cfg = ChatbotConfig.from_mapping({
+            "enabled": True,
+            "history_backend": "sqlite",
+            "history_dsn": "./tmp/test_history.db",
+            "params": {"response_format": {"type": "json_object"}},
+            "roles": {"assistant": "concierge"},
+        })
+
+        assert cfg.params["response_format"]["type"] == "json_object"
+        assert cfg.roles["assistant"] == "concierge"
+
+        bot = Chatbot.from_config(cfg)
+        assert bot.history.__class__.__name__ == "SQLiteHistoryStore"

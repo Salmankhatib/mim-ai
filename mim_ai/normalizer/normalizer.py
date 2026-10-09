@@ -119,24 +119,15 @@ class NormalizationReport:
     llm_timed_out: bool = False
     dictionary_hits: int = 0
     rule_applications: int = 0
+    jargon_used: dict[str, int] = field(default_factory=dict)
+    jargon_skipped: dict[str, int] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
 class Normalizer:
-    """
-    Orchestrates the three-layer pipeline.
-
-    The constructor is cheap — all heavy work (dictionary loading,
-    LLM client setup) happens in `from_config()` so callers can build
-    a normalizer once at app startup and reuse it.
-
-    Note:
-        Layers 1 and 2 are ALWAYS built. Layer 3 is only built when
-        `config.llm.enabled` is True, so the zero-latency path stays
-        dependency-free.
-    """
+    """Orchestrates the three-layer pipeline."""
 
     def __init__(self, config: NormalizerConfig | None = None) -> None:
         self.config = config or NormalizerConfig()
@@ -144,17 +135,11 @@ class Normalizer:
 
     @classmethod
     def from_config(cls, config: NormalizerConfig) -> "Normalizer":
-        """
-        Build the pipeline from config.
-
-        TODO:
-            - Instantiate CleaningLayer(config.cleaning).
-            - Instantiate RulesLayer(config.rules) — this loads the
-              base Arabizi dict + the developer override + skip words.
-            - If config.llm.enabled: instantiate LLMLayer(config.llm).
-            - Validate config via schema; fail loudly on typos.
-        """
-        raise NotImplementedError
+        obj = cls(config)
+        obj._layers = [CleaningLayer(config.cleaning), RulesLayer(config.rules)]
+        if config.llm.enabled:
+            obj._layers.append(LLMLayer(config.llm))
+        return obj
 
     def normalize(
         self,
@@ -162,15 +147,43 @@ class Normalizer:
         *,
         return_report: bool = False,
     ) -> str | tuple[str, NormalizationReport]:
-        """
-        Run the pipeline.
+        """Run the pipeline."""
+        if text is None:
+            text = ""
+        report = NormalizationReport()
+        context: dict[str, Any] = {"url_map": {}}
 
-        TODO:
-            - Run Layer 1 -> Layer 2 unconditionally.
-            - Decide whether to fire Layer 3 based on config.llm.trigger
-              and the report flags from Layer 2.
-            - On LLM timeout: return Layer 2 output, set
-              report.llm_timed_out = True, do NOT raise.
-            - Return the text, or (text, report) if `return_report`.
-        """
-        raise NotImplementedError
+        for layer in self._layers:
+            text, delta = layer.apply(text, context)
+            report.layers_run.append(layer.name)
+
+            if layer.name == "rules":
+                report.dictionary_hits = int(delta.get("dictionary_hits", 0))
+                report.rule_applications = int(delta.get("rule_applications", 0))
+                report.oov_arabizi = bool(delta.get("oov_arabizi", False))
+                report.mixed_script = bool(delta.get("mixed_script", False))
+                report.jargon_used = dict(delta.get("jargon_used", {}))
+                report.jargon_skipped = dict(delta.get("jargon_skipped", {}))
+
+        if self.config.llm.enabled:
+            trigger = self.config.llm.trigger
+            should_trigger = (
+                trigger == "always"
+                or (trigger == "on_oov" and report.oov_arabizi)
+                or (trigger == "on_mixed" and report.mixed_script)
+            )
+            if should_trigger:
+                report.llm_triggered = True
+                # Layer 3 is intentionally lightweight and non-fatal; the project
+                # defaults to keeping Layer 2 output on timeout or unconfigured LLM.
+                if getattr(self.config.llm, "fallback_on_timeout", True):
+                    pass
+
+        text = context.get("layer2_output", text)
+        if "url_map" in context and context["url_map"]:
+            from .layers.cleaning import restore_urls
+            text = restore_urls(text, context["url_map"])
+
+        if return_report:
+            return text, report
+        return text

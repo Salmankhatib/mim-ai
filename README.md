@@ -11,7 +11,7 @@ Morocco is building its AI foundation. The MNTRA–Mistral partnership has alrea
 
 What's missing is the **last mile**.
 
-A developer in Casablanca who wants to build a voice-enabled app today still has to:
+A developer who wants to build a voice-enabled app today taillored to morroco still has to:
 1. Find the right model.
 2. Figure out how to run it.
 3. Handle audio I/O.
@@ -52,9 +52,9 @@ pip install mim-ai
 
 ```
 
-### 2. Configure (`mim.yaml`)
+### 2. Configure (`mimExemple.yaml`)
 
-Define your models, keys, and pipeline settings in a single unified configuration file.
+Define your models, keys, and pipeline settings in the example config shipped with the package. The loader defaults to `mimExemple.yaml` when no path is passed.
 
 ### 3. Use It
 
@@ -62,20 +62,19 @@ Define your models, keys, and pipeline settings in a single unified configuratio
 from mim_ai import Mim
 
 # Initialize from config
-mim = Mim.from_config("mim.yaml")
+mim = Mim.from_config("mimExemple.yaml")
 
 # Chat
-reply = mim.chat("salam, chkoun nta?")
+reply = mim.chat("salam, chkoun nta?", session_id="user-42")
 
 # Voice pipeline
 voice = mim.listen_and_reply(session_id="user-42")
 
-# Just transcription
-text = mim.transcribe("call.wav")
+# Transcribe a WAV file
+text = mim.transcribe_file("call.wav")
 
-# Just readout
-mim.speak("Salam, kifach nta lyoum?", play_audio=True)
-
+# If you want the app to speak a response, plug in a provider-backed TTS config
+# and call the voice pipeline instead of a bare helper.
 ```
 
 ---
@@ -125,4 +124,21 @@ mim_ai/
 
 ```
 
-> **Note:** Every subsystem is optional. If your configuration only enables the normalizer, nothing else loads. 
+> **Note:** Every subsystem is optional. If your configuration only enables the normalizer, nothing else loads.
+
+---
+
+## 📚 Documentation
+
+- English: [docs/EN/tutorial.md](docs/EN/tutorial.md)
+- Français: [docs/FR/tutorial.md](docs/FR/tutorial.md)
+- Architecture: [docs/EN/architecture.md](docs/EN/architecture.md) / [docs/FR/architecture.md](docs/FR/architecture.md)
+- Contributing: [docs/EN/contributing.md](docs/EN/contributing.md) / [docs/FR/contributing.md](docs/FR/contributing.md)
+- Manifesto: [docs/EN/manifesto.md](docs/EN/manifesto.md) / [docs/FR/manifesto.md](docs/FR/manifesto.md)
+- Feature guides: [docs/EN/features/normalizer.md](docs/EN/features/normalizer.md), [docs/EN/features/chatbot.md](docs/EN/features/chatbot.md), [docs/EN/features/voice.md](docs/EN/features/voice.md), [docs/EN/features/audit.md](docs/EN/features/audit.md)
+
+---
+
+## 🧪 Minimal project example
+
+A small FastAPI example is included in [examples/project_example.py](examples/project_example.py). It demonstrates how to expose the library through a simple HTTP service.

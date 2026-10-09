@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from typing import Protocol
 
 from .config import ChatbotConfig
+from .history import build_history_store
 from .llm import LLMError, LLMProvider, ToolCall, build_provider
 from .prompt_templates import resolve as resolve_prompt
 from .tools import ToolRegistry, get_default_registry
@@ -103,14 +104,15 @@ class Chatbot:
         self.enabled = config.enabled
         self.provider = provider or build_provider(config)
         self.registry = registry or get_default_registry()
-        self.history = history or InMemoryHistoryStore(
-            config.max_history_turns, config.session_ttl_seconds,
-        )
+        self.history = history or build_history_store(config)
+        self.roles = dict(getattr(config, "roles", {}) or {})
         self.normalizer = normalizer
         self.audit = audit
         self.normalizer_log = normalizer_log
         self.system_prompt = resolve_prompt(
-            config.system_prompt, config.system_prompt_extra,
+            config.system_prompt,
+            config.system_prompt_extra,
+            file_path=getattr(config, "system_prompt_file", None),
         )
 
     # -----------------------------------------------------------------

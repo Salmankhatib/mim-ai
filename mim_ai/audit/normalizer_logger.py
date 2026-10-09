@@ -20,7 +20,7 @@ import json
 import random
 from datetime import datetime, timezone
 
-from .backends import JSONLBackend, SQLiteBackend
+from .backends import create_backend
 from .config import NormalizerLogConfig
 
 
@@ -32,12 +32,7 @@ class NormalizerLogger:
         if not self.enabled:
             return
 
-        if config.backend == "sqlite":
-            self._backend = SQLiteBackend(config.db_path, "normalizer_events")
-        elif config.backend == "jsonl":
-            self._backend = JSONLBackend(config.jsonl_path, "normalizer")
-        else:
-            raise ValueError(f"Unknown normalizer backend: {config.backend!r}")
+        self._backend = create_backend(config, getattr(config, "collection", "normalizer_events"))
 
         if config.purge_on_start:
             self._backend.purge_older_than(config.retention_days)

@@ -1,0 +1,14 @@
+# Base list of Latin-script tokens that must remain untouched.
+# These entries are intentionally conservative: they are common
+# real-world words that look like Arabizi, but are safer left alone.
+
+"salam": true
+"labas": true
+"kho": true
+"bghit": true
+"wa7ed": true
+"wahed": true
+"merci": true
+"bonjour": true
+"hello": true
+"thanks": true

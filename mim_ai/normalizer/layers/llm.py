@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Layer 3 — LLM Normalizer (optional).
 
@@ -22,9 +24,6 @@ You are a Moroccan Darija normalizer. Normalize the following text:
 
 Text: {text}
 """
-
-
-from __future__ import annotations
 
 from typing import Any
 

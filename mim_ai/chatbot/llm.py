@@ -90,12 +90,15 @@ class OpenAICompatibleProvider:
         messages: list[dict],
         tools: list[dict] | None = None,
     ) -> LLMResponse:
+        extra_params = dict(getattr(self.config, "llm_extra_params", {}) or {})
+        extra_params.update(getattr(self.config, "params", {}) or {})
+
         body: dict[str, Any] = {
             "model":       self.config.llm_model,
             "messages":    messages,
             "temperature": self.config.llm_temperature,
             "max_tokens":  self.config.llm_max_tokens,
-            **self.config.llm_extra_params,
+            **extra_params,
         }
         if tools and self.config.enable_tools:
             body["tools"] = tools

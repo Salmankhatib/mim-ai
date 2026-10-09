@@ -48,10 +48,22 @@ from .schema import (
     LLMConfig,
 )
 
+
+def __getattr__(name):
+    if name == "arabic_rules":
+        import importlib
+        return importlib.import_module(".layers.arabic_rules", __name__)
+    if name == "darija_rules":
+        import importlib
+        return importlib.import_module(".darija_rules", __name__)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 __all__ = [
     # public API
     "Normalizer",
     "NormalizationReport",
+    "arabic_rules",
     # config types (for callers building a config programmatically)
     "NormalizerConfig",
     "CleaningConfig",

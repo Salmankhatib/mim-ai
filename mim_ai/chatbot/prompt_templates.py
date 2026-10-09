@@ -32,7 +32,7 @@ TEMPLATES: dict[str, str | callable] = {
 }
 
 
-def resolve(system_prompt: str, extra: str = "") -> str:
+def resolve(system_prompt: str, extra: str = "", file_path: str | None = None) -> str:
     """
     Return the final system prompt string.
 
@@ -40,10 +40,21 @@ def resolve(system_prompt: str, extra: str = "") -> str:
         * a key in TEMPLATES ("darija", "support", ...)
         * a literal prompt string (anything not in TEMPLATES)
     `extra` is appended verbatim, separated by a blank line.
+    `file_path` can point to a prompt file. If supplied, its content is
+    appended after the template and before the inline extra block.
     """
     base = TEMPLATES.get(system_prompt, system_prompt)
     if callable(base):
         base = base(extra)
-    elif extra:
+
+    if file_path:
+        try:
+            file_text = open(file_path, "r", encoding="utf-8").read().strip()
+        except OSError:
+            file_text = ""
+        if file_text:
+            base = f"{base}\n\n{file_text}"
+
+    if extra:
         base = f"{base}\n\n{extra}"
     return base

@@ -18,7 +18,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
-from .backends import JSONLBackend, SQLiteBackend
+from .backends import SQLiteBackend, create_backend
 from .config import AuditConfig
 
 
@@ -31,12 +31,7 @@ class AuditLogger:
         if not self.enabled:
             return
 
-        if config.backend == "sqlite":
-            self._backend = SQLiteBackend(config.db_path, "audit_events")
-        elif config.backend == "jsonl":
-            self._backend = JSONLBackend(config.jsonl_path, "audit")
-        else:
-            raise ValueError(f"Unknown audit backend: {config.backend!r}")
+        self._backend = create_backend(config, getattr(config, "collection", "audit_events"))
 
         if config.purge_on_start:
             self._backend.purge_older_than(config.retention_days)

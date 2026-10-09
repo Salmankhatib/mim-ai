@@ -37,14 +37,15 @@ class Mim:
     def __init__(self, config: MimConfig) -> None:
         self.config = config
         self._normalizer = None
-        self._intents    = None
-        self._audit      = None
-        self._logs       = None
-        self._chatbot    = None
-        self._voice      = None
+        self._intents = None
+        self._audit = None
+        self._normalizer_log = None
+        self._logs = None
+        self._chatbot = None
+        self._voice = None
 
     @classmethod
-    def from_config(cls, path: str = "mim.yaml") -> "Mim":
+    def from_config(cls, path: str = "mimExemple.yaml") -> "Mim":
         return cls(load_config(path))
 
     # ------------------------------------------------------------------
@@ -53,17 +54,16 @@ class Mim:
     @property
     def normalizer(self):
         if self._normalizer is None and self.config.normalizer.enabled:
-            from .normalizer import Normalizer, NormalizerConfig
-            n = self.config.normalizer
-            self._normalizer = Normalizer.from_config(NormalizerConfig(
-                unify_alef=n.unify_alef, unify_ya=n.unify_ya,
-                unify_ta_marbuta=n.unify_ta_marbuta,
-                remove_diacritics=n.remove_diacritics,
-                preserve_urls=n.preserve_urls,
-                arabizi_dict_path=n.arabizi_dict_path or None,
-                skip_words_path=n.skip_words_path or None,
-            ))
+            from .normalizer import Normalizer
+            self._normalizer = Normalizer.from_config(self.config.normalizer)
         return self._normalizer
+
+    @property
+    def normalizer_log(self):
+        if self._normalizer_log is None and self.config.logs.enabled:
+            from .audit import NormalizerLogger
+            self._normalizer_log = NormalizerLogger(self.config.logs)
+        return self._normalizer_log
 
     @property
     def intents(self):
@@ -78,26 +78,21 @@ class Mim:
     @property
     def audit(self):
         if self._audit is None and self.config.audit.enabled:
-            from .audit import AuditLogger, AuditConfig
-            a = self.config.audit
-            self._audit = AuditLogger(AuditConfig(
-                enabled=True, backend=a.backend,
-                db_path=a.db_path, jsonl_path=a.jsonl_path,
-                retention_days=a.retention_days, hash_chain=a.hash_chain,
-            ))
+            from .audit import AuditLogger
+            self._audit = AuditLogger(self.config.audit)
         return self._audit
 
     @property
     def chatbot(self):
         if self._chatbot is None and self.config.chatbot.enabled:
-            from .chatbot import Chatbot, ChatbotConfig
+            from .chatbot import Chatbot
             c = self.config.chatbot
-            self._chatbot = Chatbot.from_config(ChatbotConfig(
-                enabled=True, system_prompt=c.system_prompt,
-                history_backend=c.history_backend, history_dsn=c.history_dsn,
-                max_history_turns=c.max_history_turns,
-                enable_tools=c.enable_tools, max_tool_calls=c.max_tool_calls,
-            ))
+            self._chatbot = Chatbot.from_config(
+                c,
+                normalizer=self.normalizer,
+                audit=self.audit,
+                normalizer_log=self.normalizer_log,
+            )
         return self._chatbot
 
     @property
@@ -141,7 +136,7 @@ class Mim:
 
     def shutdown(self) -> None:
         """Release resources. Idempotent."""
-        for attr in ("_voice", "_chatbot", "_audit", "_logs", "_intents", "_normalizer"):
+        for attr in ("_voice", "_chatbot", "_audit", "_logs", "_normalizer_log", "_intents", "_normalizer"):
             setattr(self, attr, None)
 
 
