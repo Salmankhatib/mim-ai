@@ -52,3 +52,6 @@ tmp/
 
 # Generated artifacts
 *.log
+
+## Miscellaneous
+*.TODO.MD
