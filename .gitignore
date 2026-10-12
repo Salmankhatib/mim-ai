@@ -5,6 +5,7 @@ __pycache__/
 *.pyd
 *.pyc
 *.pkl
+*.pyc
 
 # Virtual environments
 .venv/
