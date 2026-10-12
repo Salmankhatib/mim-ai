@@ -1,0 +1,129 @@
+# mimExemple.yaml
+# Copy this file into your project root and adjust values.
+# This is the canonical config used by MIM at runtime.
+
+normalizer:
+  enabled: true
+  cleaning:
+    preserve_urls: true
+    strip_tatweel: true
+    strip_mentions: false
+    strip_hashtags: false
+    strip_urls: false
+  rules:
+    unify_alef: true
+    unify_ya: true
+    unify_ta_marbuta: false
+    remove_diacritics: true
+    normalize_digits: true
+    arabizi_dict_path: ./darija/arabizi.yaml
+    skip_words_path: ./darija/skip_words.yaml
+    arabic_rules_path: ./mim_ai/normalizer/data/arabic_rules.yaml
+  llm:
+    enabled: false
+    trigger: on_oov
+    model: mntra/mistral-darija
+    endpoint: https://api.mntra.ma/v1
+    api_key_env: MNTRA_API_KEY
+    timeout_ms: 800
+    max_tokens: 256
+    fallback_on_timeout: true
+
+chatbot:
+  enabled: true
+  system_prompt: darija
+  language: auto
+  use_intents: true
+  use_normalizer: true
+  use_audit_log: true
+  use_normalizer_log: true
+  enable_tools: true
+  max_tool_calls: 5
+  max_history_turns: 20
+  session_ttl_seconds: 3600
+  history_backend: memory
+  history_dsn: null
+  llm_provider: openai
+  llm_model: mntra/mistral-darija
+  llm_endpoint: https://api.mntra.ma/v1
+  llm_api_key_env: MNTRA_API_KEY
+  llm_temperature: 0.7
+  llm_max_tokens: 1024
+  llm_timeout_ms: 30000
+  llm_extra_headers: {}
+  llm_extra_params: {}
+  params: {}
+  roles: {}
+
+voice:
+  enabled: true
+  use_normalizer: true
+  use_intents: true
+  use_audit_log: true
+  use_chatbot: true
+  max_record_seconds: 30
+  silence_timeout_ms: 1500
+  vad:
+    enabled: true
+    threshold: 0.5
+    min_silence_ms: 500
+  audio:
+    input_device: null
+    output_device: null
+    sample_rate: 16000
+    chunk_ms: 32
+
+stt:
+  enabled: true
+  provider: openai
+  model: whisper-1
+  base_url: https://api.openai.com/v1
+  api_key_env: OPENAI_API_KEY
+  language: ar
+  timeout_ms: 20000
+  temperature: 0.0
+  extra: {}
+
+tts:
+  enabled: true
+  provider: openai
+  model: tts-1
+  voice: nova
+  base_url: https://api.openai.com/v1
+  api_key_env: OPENAI_API_KEY
+  format: wav
+  timeout_ms: 20000
+  extra: {}
+
+intents:
+  enabled: true
+  strategy: hybrid
+  intents_path: ./intents.yaml
+  threshold: 0.55
+
+audit:
+  enabled: true
+  backend: sqlite
+  db_path: ./audit/audit.db
+  jsonl_path: ./audit/
+  database_url: null
+  collection: audit_events
+  retention_days: 90
+  hash_chain: true
+  app_version: mim-ai 0.1.0
+  purge_on_start: true
+
+logs:
+  enabled: true
+  backend: sqlite
+  db_path: ./logs/normalizer.db
+  jsonl_path: ./logs/
+  database_url: null
+  collection: normalizer_events
+  retention_days: 7
+  capture_jargon_used: true
+  capture_jargon_skipped: true
+  capture_skipped_tokens: true
+  max_tokens_per_event: 50
+  sample_rate: 1.0
+  purge_on_start: true

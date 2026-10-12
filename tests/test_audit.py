@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from mim_ai import MimConfig
+from mim_ai import MimConfig, load_config
 from mim_ai.voice.pipeline import VoicePipeline
 from mim_ai.audit import AuditLogger, NormalizerLogger
 from mim_ai.audit.backends import (
@@ -113,6 +113,15 @@ def test_chatbot_supports_prompt_file_and_personalized_params(tmp_path):
     assert cfg.chatbot.system_prompt_file == str(prompt_file)
     assert cfg.chatbot.params["temperature"] == 0.2
     assert cfg.chatbot.roles["assistant"] == "concierge"
+
+
+def test_load_config_creates_default_yaml_when_missing(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    cfg = load_config("mimExemple.yaml")
+
+    assert (tmp_path / "mimExemple.yaml").exists()
+    assert cfg.chatbot.enabled is True
+    assert cfg.voice.enabled is True
 
 
 def test_voice_pipeline_uses_configured_normalizer_and_audit(monkeypatch):

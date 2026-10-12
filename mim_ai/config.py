@@ -6,6 +6,8 @@ from typing import Any
 
 import yaml
 
+DEFAULT_CONFIG_SOURCE = "mim_ai/default_config.yaml"
+
 from .audit.config import AuditConfig, NormalizerLogConfig
 from .chatbot.config import ChatbotConfig
 from .intents.config import IntentConfig
@@ -197,15 +199,40 @@ def _candidate_paths(path: str | None) -> list[Path]:
     ]
 
 
+def write_default_config(path: str | Path = "mimExemple.yaml", *, overwrite: bool = False) -> Path:
+    """Create a working default config file in the target directory."""
+    target = Path(path)
+    candidates = [target]
+    if not target.is_absolute():
+        candidates.append(Path.home() / target.name)
+
+    for candidate in candidates:
+        if candidate.exists() and not overwrite:
+            return candidate
+        try:
+            candidate.parent.mkdir(parents=True, exist_ok=True)
+            template_path = Path(__file__).with_name("default_config.yaml")
+            content = template_path.read_text(encoding="utf-8")
+            candidate.write_text(content, encoding="utf-8")
+            return candidate
+        except PermissionError:
+            continue
+
+    raise PermissionError(f"Unable to write default config to {target} or {Path.home() / target.name}")
+
+
 def load_config(path: str | None = "mimExemple.yaml") -> MimConfig:
-    """Load application config from the example YAML used by developers."""
-    for candidate in _candidate_paths(path):
+    """Load application config from a project YAML, creating a default one if missing."""
+    candidates = _candidate_paths(path)
+    for candidate in candidates:
         if candidate.exists():
             with candidate.open("r", encoding="utf-8") as fh:
                 return MimConfig.from_dict(yaml.safe_load(fh) or {})
 
-    searched = ", ".join(str(p) for p in _candidate_paths(path))
-    raise FileNotFoundError(f"No config file found. Looked for: {searched}")
+    default_target = candidates[0]
+    target = write_default_config(default_target, overwrite=False)
+    with target.open("r", encoding="utf-8") as fh:
+        return MimConfig.from_dict(yaml.safe_load(fh) or {})
 
 
-__all__ = ["MimConfig", "load_config"]
+__all__ = ["MimConfig", "load_config", "write_default_config"]
