@@ -108,6 +108,7 @@ from .schema import NormalizerConfig
 # ---------------------------------------------------------------------------
 # Report — returned alongside the normalized text when requested.
 # ---------------------------------------------------------------------------
+
 @dataclass
 class NormalizationReport:
     """Diagnostics for a single `normalize()` call."""
@@ -121,7 +122,6 @@ class NormalizationReport:
     rule_applications: int = 0
     jargon_used: dict[str, int] = field(default_factory=dict)
     jargon_skipped: dict[str, int] = field(default_factory=dict)
-
 
 # ---------------------------------------------------------------------------
 # Orchestrator

@@ -211,6 +211,12 @@ def _normalize_token(
     # ---- Arabic script -----------------------------------------------------
     if script == "arabic":
         before = token
+        lookup_result = arabizi.lookup(token)
+        if lookup_result is not None:
+            report.dictionary_hits += 1
+            report.jargon_used[token] = report.jargon_used.get(token, 0) + 1
+            return lookup_result
+
         token = apply_arabic_rules(
             token,
             unify_alef_=config.unify_alef,

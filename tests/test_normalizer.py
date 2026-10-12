@@ -150,6 +150,10 @@ class TestArabicRules:
 # ---------------------------------------------------------------------------
 class TestCodeSwitching:
 
+    def test_canonical_darija_variant_bank(self, norm):
+        assert norm.normalize("b8it nchouf daaba") == "bghit nchouf daba"
+        assert norm.normalize("بغيت نشوف دابة") == "بغيت نشوف دابا"
+
     def test_darija_french_mix(self, norm):
         text = "salam, ça va? bghit n3ref wa7ed chi haja"
         out = norm.normalize(text)

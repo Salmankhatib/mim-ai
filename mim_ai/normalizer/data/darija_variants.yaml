@@ -1,0 +1,1421 @@
+# normalizer/data/darija_variants.yaml
+# Canonical form -> accepted spelling variants.
+# The normalizer maps every variant to the canonical form.
+
+entries:
+  - canonical_arabizi: "bghit"
+    canonical_arabic: "بغيت"
+    variants:
+      arabizi:
+        - "bghit"
+        - "b8it"
+        - "b8yt"
+        - "bgit"
+        - "bghyt"
+        - "brit"
+        - "bghit"
+      arabic:
+        - "بغيت"
+        - "بغيتة"
+        - "بغتي"
+        - "بغيتي"
+  - canonical_arabizi: "daba"
+    canonical_arabic: "دابا"
+    variants:
+      arabizi:
+        - "daba"
+        - "daaba"
+        - "dabaa"
+        - "dba"
+        - "dba"
+      arabic:
+        - "دابا"
+        - "دابة"
+        - "دبه"
+  - canonical_arabizi: "salam"
+    canonical_arabic: "سلام"
+    variants:
+      arabizi:
+        - "salam"
+        - "slm"
+        - "sllm"
+      arabic:
+        - "سلام"
+        - "سلم"
+  - canonical_arabizi: "wa7ed"
+    canonical_arabic: "واحد"
+    variants:
+      arabizi:
+        - "wa7ed"
+        - "wahed"
+        - "w7ed"
+      arabic:
+        - "واحد"
+        - "واجد"
+
+  # Greetings / politeness
+  - canonical_arabizi: "salam"
+    canonical_arabic: "سلام"
+    variants:
+      arabizi:
+        - "salam"
+        - "slam"
+        - "slm"
+        - "sllm"
+        - "saalam"
+      arabic:
+        - "سلام"
+        - "سلم"
+        - "سلأم"
+
+  - canonical_arabizi: "labas"
+    canonical_arabic: "لاباس"
+    variants:
+      arabizi:
+        - "labas"
+        - "lbas"
+        - "labes"
+        - "labass"
+      arabic:
+        - "لاباس"
+        - "لباس"
+        - "لاباس"
+
+  - canonical_arabizi: "choukran"
+    canonical_arabic: "شكرا"
+    variants:
+      arabizi:
+        - "choukran"
+        - "chokran"
+        - "shokran"
+        - "chukran"
+        - "chokrane"
+      arabic:
+        - "شكرا"
+        - "شكراً"
+        - "شوكران"
+
+  - canonical_arabizi: "afak"
+    canonical_arabic: "عافاك"
+    variants:
+      arabizi:
+        - "afak"
+        - "3afak"
+        - "aafak"
+        - "3afek"
+      arabic:
+        - "عافاك"
+        - "عفاك"
+        - "عافاك"
+
+  - canonical_arabizi: "bslama"
+    canonical_arabic: "بسلامة"
+    variants:
+      arabizi:
+        - "bslama"
+        - "bsslama"
+        - "beslama"
+        - "bslama"
+      arabic:
+        - "بسلامة"
+        - "بسلمة"
+        - "بسلامة"
+
+  - canonical_arabizi: "sbah_lkhir"
+    canonical_arabic: "صباح الخير"
+    variants:
+      arabizi:
+        - "sbah lkhir"
+        - "sba7 lkhir"
+        - "sbah el khir"
+        - "sba7 elkhir"
+      arabic:
+        - "صباح الخير"
+        - "صباح لخير"
+        - "صباح الخير"
+
+  - canonical_arabizi: "msa_lkhir"
+    canonical_arabic: "مساء الخير"
+    variants:
+      arabizi:
+        - "msa lkhir"
+        - "msa2 lkhir"
+        - "msa el khir"
+      arabic:
+        - "مساء الخير"
+        - "مسا الخير"
+        - "مساء الخير"
+
+  # Pronouns / identity
+  - canonical_arabizi: "ana"
+    canonical_arabic: "أنا"
+    variants:
+      arabizi:
+        - "ana"
+        - "anaa"
+        - "ana"
+      arabic:
+        - "أنا"
+        - "انا"
+        - "أنأ"
+
+  - canonical_arabizi: "nta"
+    canonical_arabic: "نتا"
+    variants:
+      arabizi:
+        - "nta"
+        - "ntta"
+        - "ntaya"
+      arabic:
+        - "نتا"
+        - "نتّا"
+        - "نتا"
+
+  - canonical_arabizi: "nti"
+    canonical_arabic: "نتي"
+    variants:
+      arabizi:
+        - "nti"
+        - "ntti"
+        - "ntiya"
+      arabic:
+        - "نتي"
+        - "نتّي"
+        - "نتي"
+
+  - canonical_arabizi: "huwa"
+    canonical_arabic: "هو"
+    variants:
+      arabizi:
+        - "huwa"
+        - "howa"
+        - "huwa"
+      arabic:
+        - "هو"
+        - "هوة"
+        - "هو"
+
+  - canonical_arabizi: "hiya"
+    canonical_arabic: "هي"
+    variants:
+      arabizi:
+        - "hiya"
+        - "hiia"
+        - "hya"
+      arabic:
+        - "هي"
+        - "هية"
+        - "هي"
+
+  - canonical_arabizi: "7na"
+    canonical_arabic: "حنا"
+    variants:
+      arabizi:
+        - "7na"
+        - "hna"
+        - "7na"
+      arabic:
+        - "حنا"
+        - "احنا"
+        - "إحنا"
+
+  - canonical_arabizi: "ntoma"
+    canonical_arabic: "نتوما"
+    variants:
+      arabizi:
+        - "ntoma"
+        - "ntuma"
+        - "ntouma"
+      arabic:
+        - "نتوما"
+        - "نتوما"
+        - "نتوما"
+
+  - canonical_arabizi: "huma"
+    canonical_arabic: "هما"
+    variants:
+      arabizi:
+        - "huma"
+        - "homma"
+        - "humma"
+      arabic:
+        - "هما"
+        - "هوما"
+        - "هما"
+
+  # Existence / copula
+  - canonical_arabizi: "kayn"
+    canonical_arabic: "كاين"
+    variants:
+      arabizi:
+        - "kayn"
+        - "kayen"
+        - "kayn"
+        - "kayyne"
+      arabic:
+        - "كاين"
+        - "كاين"
+        - "كاين"
+
+  - canonical_arabizi: "makayn"
+    canonical_arabic: "ماكاين"
+    variants:
+      arabizi:
+        - "makayn"
+        - "makayen"
+        - "makaynch"
+        - "makayench"
+      arabic:
+        - "ماكاين"
+        - "ماكاينش"
+        - "ماكاين"
+
+  - canonical_arabizi: "rah"
+    canonical_arabic: "راه"
+    variants:
+      arabizi:
+        - "rah"
+        - "rahh"
+        - "ra"
+      arabic:
+        - "راه"
+        - "راح"
+        - "راه"
+
+  - canonical_arabizi: "rani"
+    canonical_arabic: "راني"
+    variants:
+      arabizi:
+        - "rani"
+        - "raani"
+        - "rany"
+      arabic:
+        - "راني"
+        - "راني"
+        - "راني"
+
+  # Time
+  - canonical_arabizi: "daba"
+    canonical_arabic: "دابا"
+    variants:
+      arabizi:
+        - "daba"
+        - "daaba"
+        - "dabaa"
+        - "dba"
+      arabic:
+        - "دابا"
+        - "دابة"
+        - "دبه"
+
+  - canonical_arabizi: "doka"
+    canonical_arabic: "دوكا"
+    variants:
+      arabizi:
+        - "doka"
+        - "douka"
+        - "dokka"
+      arabic:
+        - "دوكا"
+        - "دوكة"
+        - "دوكا"
+
+  - canonical_arabizi: "ghedda"
+    canonical_arabic: "غدا"
+    variants:
+      arabizi:
+        - "ghedda"
+        - "ghdda"
+        - "gheda"
+        - "ghedda"
+      arabic:
+        - "غدا"
+        - "غدة"
+        - "غدّا"
+
+  - canonical_arabizi: "lbare7"
+    canonical_arabic: "البارح"
+    variants:
+      arabizi:
+        - "lbare7"
+        - "lbareh"
+        - "lbar7"
+        - "lbare7"
+      arabic:
+        - "البارح"
+        - "لبارح"
+        - "البارح"
+
+  - canonical_arabizi: "lyoum"
+    canonical_arabic: "اليوم"
+    variants:
+      arabizi:
+        - "lyoum"
+        - "lyum"
+        - "lyom"
+        - "alyoum"
+      arabic:
+        - "اليوم"
+        - "ليوم"
+        - "اليوم"
+
+  # Question words
+  - canonical_arabizi: "wach"
+    canonical_arabic: "واش"
+    variants:
+      arabizi:
+        - "wach"
+        - "wesh"
+        - "wache"
+        - "wach"
+      arabic:
+        - "واش"
+        - "واش"
+        - "واش"
+
+  - canonical_arabizi: "fin"
+    canonical_arabic: "فين"
+    variants:
+      arabizi:
+        - "fin"
+        - "fyn"
+        - "finn"
+      arabic:
+        - "فين"
+        - "فين"
+        - "فين"
+
+  - canonical_arabizi: "kifash"
+    canonical_arabic: "كيفاش"
+    variants:
+      arabizi:
+        - "kifash"
+        - "kifach"
+        - "kyfash"
+        - "kifash"
+      arabic:
+        - "كيفاش"
+        - "كيفاش"
+        - "كيفاش"
+
+  - canonical_arabizi: "3lach"
+    canonical_arabic: "علاش"
+    variants:
+      arabizi:
+        - "3lach"
+        - "3lah"
+        - "3lach"
+        - "3lash"
+      arabic:
+        - "علاش"
+        - "علاش"
+        - "علاش"
+
+  - canonical_arabizi: "shkoun"
+    canonical_arabic: "شكون"
+    variants:
+      arabizi:
+        - "shkoun"
+        - "chkoun"
+        - "shkon"
+        - "chkon"
+      arabic:
+        - "شكون"
+        - "شكون"
+        - "شكون"
+
+  - canonical_arabizi: "foqach"
+    canonical_arabic: "فوقاش"
+    variants:
+      arabizi:
+        - "foqach"
+        - "fo9ach"
+        - "fouqach"
+        - "fo9a4"
+      arabic:
+        - "فوقاش"
+        - "فوقاش"
+        - "فوقاش"
+
+  # Negation / agreement
+  - canonical_arabizi: "la"
+    canonical_arabic: "لا"
+    variants:
+      arabizi:
+        - "la"
+        - "laa"
+        - "la2"
+      arabic:
+        - "لا"
+        - "لأ"
+        - "لا"
+
+  - canonical_arabizi: "iyeh"
+    canonical_arabic: "آيه"
+    variants:
+      arabizi:
+        - "iyeh"
+        - "iye"
+        - "yeah"
+        - "yeh"
+      arabic:
+        - "آيه"
+        - "ايه"
+        - "آية"
+
+  - canonical_arabizi: "wakha"
+    canonical_arabic: "واخا"
+    variants:
+      arabizi:
+        - "wakha"
+        - "wakhha"
+        - "wakila"
+        - "wakha"
+      arabic:
+        - "واخا"
+        - "واخا"
+        - "واخا"
+
+  - canonical_arabizi: "machi"
+    canonical_arabic: "ماشي"
+    variants:
+      arabizi:
+        - "machi"
+        - "mchi"
+        - "mache"
+        - "machi"
+      arabic:
+        - "ماشي"
+        - "ماشي"
+        - "ماشي"
+
+  - canonical_arabizi: "me3lich"
+    canonical_arabic: "معلش"
+    variants:
+      arabizi:
+        - "me3lich"
+        - "ma3lich"
+        - "m3lich"
+        - "me3lic"
+        - "ma3lic"
+      arabic:
+        - "معلش"
+        - "معليش"
+        - "معلش"
+
+  # Common verbs
+  - canonical_arabizi: "bghit"
+    canonical_arabic: "بغيت"
+    variants:
+      arabizi:
+        - "bghit"
+        - "b8it"
+        - "b8yt"
+        - "bgit"
+        - "bghyt"
+        - "brit"
+      arabic:
+        - "بغيت"
+        - "بغيتة"
+        - "بغتي"
+        - "بغيتي"
+
+  - canonical_arabizi: "bgha"
+    canonical_arabic: "بغى"
+    variants:
+      arabizi:
+        - "bgha"
+        - "b8a"
+        - "bga"
+        - "bgha"
+      arabic:
+        - "بغى"
+        - "بغا"
+        - "بغى"
+
+  - canonical_arabizi: "kanbghi"
+    canonical_arabic: "كانبغي"
+    variants:
+      arabizi:
+        - "kanbghi"
+        - "kanb8i"
+        - "kanbgit"
+        - "kanbghi"
+      arabic:
+        - "كانبغي"
+        - "كانبغيت"
+        - "كانبغي"
+
+  - canonical_arabizi: "mabghitch"
+    canonical_arabic: "مابغيتش"
+    variants:
+      arabizi:
+        - "mabghitch"
+        - "mab8itch"
+        - "mabghitich"
+        - "mabghitch"
+      arabic:
+        - "مابغيتش"
+        - "مابغيتش"
+        - "مابغيتش"
+
+  - canonical_arabizi: "n3ref"
+    canonical_arabic: "نعرف"
+    variants:
+      arabizi:
+        - "n3ref"
+        - "n3rf"
+        - "na3ref"
+        - "n3ref"
+      arabic:
+        - "نعرف"
+        - "نعارف"
+        - "نعرف"
+
+  - canonical_arabizi: "kan3ref"
+    canonical_arabic: "كانعرف"
+    variants:
+      arabizi:
+        - "kan3ref"
+        - "kan3rf"
+        - "kana3ref"
+      arabic:
+        - "كانعرف"
+        - "كانعرف"
+        - "كانعرف"
+
+  - canonical_arabizi: "ma3rftch"
+    canonical_arabic: "ماعرفتش"
+    variants:
+      arabizi:
+        - "ma3rftch"
+        - "ma3raftch"
+        - "ma3rftich"
+      arabic:
+        - "ماعرفتش"
+        - "ماعرفتش"
+        - "ماعرفتش"
+
+  - canonical_arabizi: "nfhem"
+    canonical_arabic: "نفهم"
+    variants:
+      arabizi:
+        - "nfhem"
+        - "nfhm"
+        - "nafhem"
+      arabic:
+        - "نفهم"
+        - "نفهم"
+        - "نفهم"
+
+  - canonical_arabizi: "fhemt"
+    canonical_arabic: "فهمت"
+    variants:
+      arabizi:
+        - "fhemt"
+        - "fhmt"
+        - "fahemt"
+      arabic:
+        - "فهمت"
+        - "فهمت"
+        - "فهمت"
+
+  - canonical_arabizi: "mafhemtch"
+    canonical_arabic: "مافهمتش"
+    variants:
+      arabizi:
+        - "mafhemtch"
+        - "mafhmtch"
+        - "mafhamtch"
+      arabic:
+        - "مافهمتش"
+        - "مافهمتش"
+        - "مافهمتش"
+
+  - canonical_arabizi: "nmchi"
+    canonical_arabic: "نمشي"
+    variants:
+      arabizi:
+        - "nmchi"
+        - "nemchi"
+        - "nmchi"
+      arabic:
+        - "نمشي"
+        - "نمشي"
+        - "نمشي"
+
+  - canonical_arabizi: "mchit"
+    canonical_arabic: "مشيت"
+    variants:
+      arabizi:
+        - "mchit"
+        - "mchitt"
+        - "mechit"
+      arabic:
+        - "مشيت"
+        - "مشيت"
+        - "مشيت"
+
+  - canonical_arabizi: "mcha"
+    canonical_arabic: "مشى"
+    variants:
+      arabizi:
+        - "mcha"
+        - "mcha"
+        - "mecha"
+      arabic:
+        - "مشى"
+        - "مشا"
+        - "مشى"
+
+  - canonical_arabizi: "ji"
+    canonical_arabic: "جي"
+    variants:
+      arabizi:
+        - "ji"
+        - "jii"
+        - "aji"
+      arabic:
+        - "جي"
+        - "آجي"
+        - "جي"
+
+  - canonical_arabizi: "jiti"
+    canonical_arabic: "جيتي"
+    variants:
+      arabizi:
+        - "jiti"
+        - "jtiti"
+        - "jiti"
+      arabic:
+        - "جيتي"
+        - "جيتي"
+        - "جيتي"
+
+  - canonical_arabizi: "njib"
+    canonical_arabic: "نجيب"
+    variants:
+      arabizi:
+        - "njib"
+        - "nejib"
+        - "njib"
+      arabic:
+        - "نجيب"
+        - "نجيب"
+        - "نجيب"
+
+  - canonical_arabizi: "jbt"
+    canonical_arabic: "جبت"
+    variants:
+      arabizi:
+        - "jbt"
+        - "jibt"
+        - "jbt"
+      arabic:
+        - "جبت"
+        - "جبت"
+        - "جبت"
+
+  - canonical_arabizi: "nchof"
+    canonical_arabic: "نشوف"
+    variants:
+      arabizi:
+        - "nchof"
+        - "nchouf"
+        - "n4of"
+        - "nchof"
+      arabic:
+        - "نشوف"
+        - "نشوف"
+        - "نشوف"
+
+  - canonical_arabizi: "chft"
+    canonical_arabic: "شفت"
+    variants:
+      arabizi:
+        - "chft"
+        - "chouft"
+        - "chft"
+      arabic:
+        - "شفت"
+        - "شفت"
+        - "شفت"
+
+  - canonical_arabizi: "nsm3"
+    canonical_arabic: "نسمع"
+    variants:
+      arabizi:
+        - "nsm3"
+        - "nsme3"
+        - "nasma3"
+      arabic:
+        - "نسمع"
+        - "نسمع"
+        - "نسمع"
+
+  - canonical_arabizi: "sm3t"
+    canonical_arabic: "سمعت"
+    variants:
+      arabizi:
+        - "sm3t"
+        - "sme3t"
+        - "sma3t"
+      arabic:
+        - "سمعت"
+        - "سمعت"
+        - "سمعت"
+
+  - canonical_arabizi: "nhder"
+    canonical_arabic: "نهضر"
+    variants:
+      arabizi:
+        - "nhder"
+        - "nhadr"
+        - "nhder"
+      arabic:
+        - "نهضر"
+        - "نهدر"
+        - "نهضر"
+
+  - canonical_arabizi: "hdert"
+    canonical_arabic: "هضرت"
+    variants:
+      arabizi:
+        - "hdert"
+        - "hdart"
+        - "heddert"
+      arabic:
+        - "هضرت"
+        - "هدرت"
+        - "هضرت"
+
+  - canonical_arabizi: "nkteb"
+    canonical_arabic: "نكتب"
+    variants:
+      arabizi:
+        - "nkteb"
+        - "nekteb"
+        - "nktb"
+      arabic:
+        - "نكتب"
+        - "نكتب"
+        - "نكتب"
+
+  - canonical_arabizi: "ktbt"
+    canonical_arabic: "كتبت"
+    variants:
+      arabizi:
+        - "ktbt"
+        - "ktebt"
+        - "katabt"
+      arabic:
+        - "كتبت"
+        - "كتبت"
+        - "كتبت"
+
+  - canonical_arabizi: "nqra"
+    canonical_arabic: "نقرا"
+    variants:
+      arabizi:
+        - "nqra"
+        - "n9ra"
+        - "negra"
+      arabic:
+        - "نقرا"
+        - "نقرا"
+        - "نقرا"
+
+  - canonical_arabizi: "qrit"
+    canonical_arabic: "قريت"
+    variants:
+      arabizi:
+        - "qrit"
+        - "9rit"
+        - "qrit"
+      arabic:
+        - "قريت"
+        - "قريت"
+        - "قريت"
+
+  - canonical_arabizi: "nxdem"
+    canonical_arabic: "نخدم"
+    variants:
+      arabizi:
+        - "nxdem"
+        - "n5dem"
+        - "nkhdm"
+        - "nkhedem"
+      arabic:
+        - "نخدم"
+        - "نخدم"
+        - "نخدم"
+
+  - canonical_arabizi: "xdemt"
+    canonical_arabic: "خدمت"
+    variants:
+      arabizi:
+        - "xdemt"
+        - "5demt"
+        - "khedemt"
+      arabic:
+        - "خدمت"
+        - "خدمت"
+        - "خدمت"
+
+  - canonical_arabizi: "n3ti"
+    canonical_arabic: "نعطي"
+    variants:
+      arabizi:
+        - "n3ti"
+        - "n3tik"
+        - "na3ti"
+      arabic:
+        - "نعطي"
+        - "نعطيك"
+        - "نعطي"
+
+  - canonical_arabizi: "3tit"
+    canonical_arabic: "عطيت"
+    variants:
+      arabizi:
+        - "3tit"
+        - "3titek"
+        - "a3tit"
+      arabic:
+        - "عطيت"
+        - "عطيتك"
+        - "عطيت"
+
+  - canonical_arabizi: "nl9a"
+    canonical_arabic: "نلقى"
+    variants:
+      arabizi:
+        - "nl9a"
+        - "nl9ah"
+        - "nel9a"
+      arabic:
+        - "نلقى"
+        - "نلقاه"
+        - "نلقى"
+
+  - canonical_arabizi: "l9it"
+    canonical_arabic: "لقيت"
+    variants:
+      arabizi:
+        - "l9it"
+        - "l9it"
+        - "le9it"
+      arabic:
+        - "لقيت"
+        - "لقيت"
+        - "لقيت"
+
+  - canonical_arabizi: "nbda"
+    canonical_arabic: "نبدا"
+    variants:
+      arabizi:
+        - "nbda"
+        - "nebda"
+        - "nbda"
+      arabic:
+        - "نبدا"
+        - "نبدا"
+        - "نبدا"
+
+  - canonical_arabizi: "bdayt"
+    canonical_arabic: "بديت"
+    variants:
+      arabizi:
+        - "bdayt"
+        - "bdaytt"
+        - "bedayt"
+      arabic:
+        - "بديت"
+        - "بديت"
+        - "بديت"
+
+  - canonical_arabizi: "kammel"
+    canonical_arabic: "كمل"
+    variants:
+      arabizi:
+        - "kammel"
+        - "kamel"
+        - "kml"
+        - "kemmel"
+      arabic:
+        - "كمل"
+        - "كمل"
+        - "كمل"
+
+  # Connectors / frequency
+  - canonical_arabizi: "w"
+    canonical_arabic: "و"
+    variants:
+      arabizi:
+        - "w"
+        - "w"
+        - "we"
+      arabic:
+        - "و"
+        - "و"
+        - "و"
+
+  - canonical_arabizi: "wla"
+    canonical_arabic: "ولا"
+    variants:
+      arabizi:
+        - "wla"
+        - "wella"
+        - "wla"
+      arabic:
+        - "ولا"
+        - "ولا"
+        - "ولا"
+
+  - canonical_arabizi: "wllah"
+    canonical_arabic: "والله"
+    variants:
+      arabizi:
+        - "wllah"
+        - "wallah"
+        - "walah"
+        - "wllah"
+      arabic:
+        - "والله"
+        - "والله"
+        - "والله"
+
+  - canonical_arabizi: "bhal"
+    canonical_arabic: "بحال"
+    variants:
+      arabizi:
+        - "bhal"
+        - "b7al"
+        - "bhal"
+      arabic:
+        - "بحال"
+        - "بحال"
+        - "بحال"
+
+  - canonical_arabizi: "b7al"
+    canonical_arabic: "بحال"
+    variants:
+      arabizi:
+        - "b7al"
+        - "bhal"
+        - "b7al"
+      arabic:
+        - "بحال"
+        - "بحال"
+        - "بحال"
+
+  - canonical_arabizi: "ghir"
+    canonical_arabic: "غير"
+    variants:
+      arabizi:
+        - "ghir"
+        - "ghyr"
+        - "ghir"
+      arabic:
+        - "غير"
+        - "غير"
+        - "غير"
+
+  - canonical_arabizi: "brk"
+    canonical_arabic: "برك"
+    variants:
+      arabizi:
+        - "brk"
+        - "baraka"
+        - "baraka"
+      arabic:
+        - "برك"
+        - "بركة"
+        - "برك"
+
+  - canonical_arabizi: "bzzaf"
+    canonical_arabic: "بزاف"
+    variants:
+      arabizi:
+        - "bzzaf"
+        - "bzaf"
+        - "bezzaf"
+        - "bzzaf"
+      arabic:
+        - "بزاف"
+        - "بزاف"
+        - "بزاف"
+
+  - canonical_arabizi: "chwiya"
+    canonical_arabic: "شوية"
+    variants:
+      arabizi:
+        - "chwiya"
+        - "chwya"
+        - "chwaya"
+        - "chwiya"
+      arabic:
+        - "شوية"
+        - "شوية"
+        - "شوية"
+
+  - canonical_arabizi: "dyal"
+    canonical_arabic: "ديال"
+    variants:
+      arabizi:
+        - "dyal"
+        - "dial"
+        - "dyal"
+      arabic:
+        - "ديال"
+        - "ديال"
+        - "ديال"
+
+  - canonical_arabizi: "dyalk"
+    canonical_arabic: "ديالك"
+    variants:
+      arabizi:
+        - "dyalk"
+        - "dialk"
+        - "dyalak"
+      arabic:
+        - "ديالك"
+        - "ديالك"
+        - "ديالك"
+
+  - canonical_arabizi: "m3a"
+    canonical_arabic: "معا"
+    variants:
+      arabizi:
+        - "m3a"
+        - "m3ak"
+        - "m3aha"
+        - "m3aya"
+      arabic:
+        - "معا"
+        - "معاك"
+        - "معاها"
+
+  - canonical_arabizi: "f"
+    canonical_arabic: "في"
+    variants:
+      arabizi:
+        - "f"
+        - "fi"
+        - "fii"
+      arabic:
+        - "في"
+        - "ف"
+        - "في"
+
+  - canonical_arabizi: "mn"
+    canonical_arabic: "من"
+    variants:
+      arabizi:
+        - "mn"
+        - "men"
+        - "min"
+      arabic:
+        - "من"
+        - "من"
+        - "من"
+
+  - canonical_arabizi: "l"
+    canonical_arabic: "ل"
+    variants:
+      arabizi:
+        - "l"
+        - "le"
+        - "li"
+      arabic:
+        - "ل"
+        - "لل"
+        - "ل"
+
+  - canonical_arabizi: "3la"
+    canonical_arabic: "على"
+    variants:
+      arabizi:
+        - "3la"
+        - "3ala"
+        - "3la"
+      arabic:
+        - "على"
+        - "علا"
+        - "على"
+
+  - canonical_arabizi: "mlli"
+    canonical_arabic: "ملي"
+    variants:
+      arabizi:
+        - "mlli"
+        - "mli"
+        - "melli"
+      arabic:
+        - "ملي"
+        - "ملي"
+        - "ملي"
+
+  - canonical_arabizi: "mni"
+    canonical_arabic: "مني"
+    variants:
+      arabizi:
+        - "mni"
+        - "menni"
+        - "mni"
+      arabic:
+        - "مني"
+        - "مني"
+        - "مني"
+
+  - canonical_arabizi: "hadi"
+    canonical_arabic: "هادي"
+    variants:
+      arabizi:
+        - "hadi"
+        - "hadiya"
+        - "hadi"
+      arabic:
+        - "هادي"
+        - "هادية"
+        - "هادي"
+
+  - canonical_arabizi: "hada"
+    canonical_arabic: "هادا"
+    variants:
+      arabizi:
+        - "hada"
+        - "hada"
+        - "hada"
+      arabic:
+        - "هادا"
+        - "هذا"
+        - "هادا"
+
+  - canonical_arabizi: "hadchi"
+    canonical_arabic: "هادشي"
+    variants:
+      arabizi:
+        - "hadchi"
+        - "hadshi"
+        - "hadchi"
+      arabic:
+        - "هادشي"
+        - "هادشي"
+        - "هادشي"
+
+  - canonical_arabizi: "dakchi"
+    canonical_arabic: "داكشي"
+    variants:
+      arabizi:
+        - "dakchi"
+        - "dakshi"
+        - "dakchi"
+      arabic:
+        - "داكشي"
+        - "داكشي"
+        - "داكشي"
+
+  - canonical_arabizi: "chi"
+    canonical_arabic: "شي"
+    variants:
+      arabizi:
+        - "chi"
+        - "shi"
+        - "chii"
+      arabic:
+        - "شي"
+        - "شي"
+        - "شي"
+
+  - canonical_arabizi: "7ta"
+    canonical_arabic: "حتى"
+    variants:
+      arabizi:
+        - "7ta"
+        - "hta"
+        - "7ta"
+      arabic:
+        - "حتى"
+        - "حتى"
+        - "حتى"
+
+  - canonical_arabizi: "wla_7ta"
+    canonical_arabic: "ولا حتى"
+    variants:
+      arabizi:
+        - "wla 7ta"
+        - "wla hta"
+        - "wla7ta"
+      arabic:
+        - "ولا حتى"
+        - "ولا حتى"
+        - "ولا حتى"
+
+  - canonical_arabizi: "za3ma"
+    canonical_arabic: "زعما"
+    variants:
+      arabizi:
+        - "za3ma"
+        - "zaama"
+        - "z3ma"
+      arabic:
+        - "زعما"
+        - "زعما"
+        - "زعما"
+
+  - canonical_arabizi: "yak"
+    canonical_arabic: "ياك"
+    variants:
+      arabizi:
+        - "yak"
+        - "yaak"
+        - "yak"
+      arabic:
+        - "ياك"
+        - "ياك"
+        - "ياك"
+
+  - canonical_arabizi: "safi"
+    canonical_arabic: "صافي"
+    variants:
+      arabizi:
+        - "safi"
+        - "safiya"
+        - "safi"
+      arabic:
+        - "صافي"
+        - "صافية"
+        - "صافي"
+
+  - canonical_arabizi: "baraka"
+    canonical_arabic: "بركة"
+    variants:
+      arabizi:
+        - "baraka"
+        - "baraka"
+        - "brka"
+      arabic:
+        - "بركة"
+        - "بركة"
+        - "بركة"
+
+  - canonical_arabizi: "3ndi"
+    canonical_arabic: "عندي"
+    variants:
+      arabizi:
+        - "3ndi"
+        - "3andi"
+        - "3ndi"
+      arabic:
+        - "عندي"
+        - "عندي"
+        - "عندي"
+
+  - canonical_arabizi: "ma3ndich"
+    canonical_arabic: "ماعنديش"
+    variants:
+      arabizi:
+        - "ma3ndich"
+        - "ma3andich"
+        - "ma3ndich"
+      arabic:
+        - "ماعنديش"
+        - "ماعنديش"
+        - "ماعنديش"
+
+  - canonical_arabizi: "3ndna"
+    canonical_arabic: "عندنا"
+    variants:
+      arabizi:
+        - "3ndna"
+        - "3andna"
+        - "3ndna"
+      arabic:
+        - "عندنا"
+        - "عندنا"
+        - "عندنا"
+
+  - canonical_arabizi: "3ndek"
+    canonical_arabic: "عندك"
+    variants:
+      arabizi:
+        - "3ndek"
+        - "3andek"
+        - "3ndik"
+      arabic:
+        - "عندك"
+        - "عندك"
+        - "عندك"
+
+  - canonical_arabizi: "3ndhom"
+    canonical_arabic: "عندهم"
+    variants:
+      arabizi:
+        - "3ndhom"
+        - "3andhom"
+        - "3ndhom"
+      arabic:
+        - "عندهم"
+        - "عندهم"
+        - "عندهم"
+
+  - canonical_arabizi: "khouya"
+    canonical_arabic: "خويا"
+    variants:
+      arabizi:
+        - "khouya"
+        - "khoya"
+        - "khouya"
+      arabic:
+        - "خويا"
+        - "خويا"
+        - "خويا"
+
+  - canonical_arabizi: "sahbi"
+    canonical_arabic: "صاحبي"
+    variants:
+      arabizi:
+        - "sahbi"
+        - "s7abi"
+        - "sahbi"
+      arabic:
+        - "صاحبي"
+        - "صاحبي"
+        - "صاحبي"
+
+  - canonical_arabizi: "sahbti"
+    canonical_arabic: "صاحبتي"
+    variants:
+      arabizi:
+        - "sahbti"
+        - "s7abti"
+        - "sahbti"
+      arabic:
+        - "صاحبتي"
+        - "صاحبتي"
+        - "صاحبتي"
+
+  - canonical_arabizi: "walidi"
+    canonical_arabic: "والدي"
+    variants:
+      arabizi:
+        - "walidi"
+        - "weldi"
+        - "baba"
+      arabic:
+        - "والدي"
+        - "ولدي"
+        - "بابا"
+
+  - canonical_arabizi: "walidati"
+    canonical_arabic: "والدتي"
+    variants:
+      arabizi:
+        - "walidati"
+        - "weldati"
+        - "mama"
+      arabic:
+        - "والدتي"
+        - "ولدتي"
+        - "ماما"

@@ -1,24 +1,39 @@
-# Base Arabizi -> Arabic-script dictionary.
-# Developer overrides via config.rules.arabizi_dict_path.
-# Lookup keys are normalized (lowercase, repeats collapsed).
+# Base whole-word variant list.
+# Latin spellings stay Latin, Arabic spellings stay Arabic.
+# This is a simple lookup table, not a transliteration engine.
 
 # Greetings
-"salam": "سلام"
-"slm": "سلام"
-"labas": "لاباس"
-"lbas": "لاباس"
+"salam": "salam"
+"slm": "salam"
+"labas": "labas"
+"lbas": "labas"
+"سلام": "سلام"
 
 # Common verbs / particles
-"bghit": "بغيت"
-"bgha": "بغى"
-"kayn": "كاين"
-"kayen": "كاين"
-"makayn": "ماكاين"
-"makayen": "ماكاين"
-"wa7ed": "واحد"
-"wahed": "واحد"
+"bghit": "bghit"
+"b8it": "bghit"
+"b8yt": "bghit"
+"bgit": "bghit"
+"brit": "bghit"
+"بغيت": "بغيت"
+"بغيتة": "بغيت"
+"bgha": "bgha"
+"بغى": "بغى"
+"kayn": "kayn"
+"kayen": "kayn"
+"makayn": "makayn"
+"makayen": "makayn"
+"wa7ed": "wa7ed"
+"wahed": "wa7ed"
+"واحد": "واحد"
 
 # Negation
-"me3lich": "معلش"
-"ma3lich": "معلش"
-"m3lich": "معلش"
+"me3lich": "me3lich"
+"ma3lich": "me3lich"
+"m3lich": "me3lich"
+"معلش": "معلش"
+"دابا": "دابا"
+"دابة": "دابا"
+"daba": "daba"
+"daaba": "daba"
+"dabaa": "daba"
