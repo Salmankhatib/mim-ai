@@ -190,6 +190,8 @@ entries:
         - "huwa"
         - "howa"
         - "huwa"
+        - "huwah"
+        - "houwa"
       arabic:
         - "هو"
         - "هوة"
@@ -202,6 +204,7 @@ entries:
         - "hiya"
         - "hiia"
         - "hya"
+        - "hia"
       arabic:
         - "هي"
         - "هية"
@@ -238,6 +241,7 @@ entries:
         - "huma"
         - "homma"
         - "humma"
+        - "houma"
       arabic:
         - "هما"
         - "هوما"
@@ -252,6 +256,7 @@ entries:
         - "kayen"
         - "kayn"
         - "kayyne"
+        - "kyn"
       arabic:
         - "كاين"
         - "كاين"
@@ -265,6 +270,10 @@ entries:
         - "makayen"
         - "makaynch"
         - "makayench"
+        - "makaynchi"
+        - "makyench"
+        - "makinch"
+        - "mkayench"
       arabic:
         - "ماكاين"
         - "ماكاينش"
@@ -303,6 +312,7 @@ entries:
         - "daaba"
         - "dabaa"
         - "dba"
+        - "db"
       arabic:
         - "دابا"
         - "دابة"
@@ -328,6 +338,11 @@ entries:
         - "ghdda"
         - "gheda"
         - "ghedda"
+        - "8eda"
+        - "ghda"
+        - "ghada"
+        - "8ada"
+        - "ghadda"
       arabic:
         - "غدا"
         - "غدة"
@@ -341,6 +356,15 @@ entries:
         - "lbareh"
         - "lbar7"
         - "lbare7"
+        - "lbareh"
+        - "lbarh"
+        - "lbarah"
+        - "bara7"
+        - "barah"
+        - "bar7"
+        - "bareh"
+        - "bare7"
+        - "bare7"
       arabic:
         - "البارح"
         - "لبارح"
@@ -354,6 +378,10 @@ entries:
         - "lyum"
         - "lyom"
         - "alyoum"
+        - "lyouma"
+        - "alyum"
+        - "lyuma"
+        - "alyouma"
       arabic:
         - "اليوم"
         - "ليوم"
@@ -368,6 +396,7 @@ entries:
         - "wesh"
         - "wache"
         - "wach"
+        - "wesh"
       arabic:
         - "واش"
         - "واش"
@@ -380,6 +409,9 @@ entries:
         - "fin"
         - "fyn"
         - "finn"
+        - "fayen"
+        - "fayn"
+        - "faine"
       arabic:
         - "فين"
         - "فين"
@@ -393,6 +425,7 @@ entries:
         - "kifach"
         - "kyfash"
         - "kifash"
+        - "kiffach"
       arabic:
         - "كيفاش"
         - "كيفاش"
@@ -406,6 +439,17 @@ entries:
         - "3lah"
         - "3lach"
         - "3lash"
+        - "aalach"
+        - "3laach"
+        - "3lash"
+        - "aelash"
+        - "aelach"
+        - "aelash"
+        - "lach"
+        - "laach"
+        - "laash"
+        - "lash"
+
       arabic:
         - "علاش"
         - "علاش"
@@ -419,6 +463,11 @@ entries:
         - "chkoun"
         - "shkon"
         - "chkon"
+        - "chkoune"
+        - "chkounne"
+        - "shkoune"
+        - "chkon"
+        - "shkon"
       arabic:
         - "شكون"
         - "شكون"
@@ -430,8 +479,15 @@ entries:
       arabizi:
         - "foqach"
         - "fo9ach"
+        - "foqash"
+        - "fo9ash"
         - "fouqach"
         - "fo9a4"
+        - "fogach"
+        - "fougach"
+        - "fogash"
+        - "fogach"
+        - "foyakh"
       arabic:
         - "فوقاش"
         - "فوقاش"
@@ -445,6 +501,7 @@ entries:
         - "la"
         - "laa"
         - "la2"
+        - "lae"
       arabic:
         - "لا"
         - "لأ"
@@ -456,7 +513,6 @@ entries:
       arabizi:
         - "iyeh"
         - "iye"
-        - "yeah"
         - "yeh"
       arabic:
         - "آيه"
@@ -469,8 +525,10 @@ entries:
       arabizi:
         - "wakha"
         - "wakhha"
-        - "wakila"
         - "wakha"
+        - "waja"
+        - "wa5a"
+        - "wkha"
       arabic:
         - "واخا"
         - "واخا"
@@ -482,7 +540,6 @@ entries:
       arabizi:
         - "machi"
         - "mchi"
-        - "mache"
         - "machi"
       arabic:
         - "ماشي"
@@ -498,6 +555,12 @@ entries:
         - "m3lich"
         - "me3lic"
         - "ma3lic"
+        - "m3lich"
+        - "m3lish"
+        - "ma3lish"
+        - "ma3lich"
+        - "maaelich"
+        - "maelich"
       arabic:
         - "معلش"
         - "معليش"
@@ -832,12 +895,14 @@ entries:
         - "qrit"
         - "9rit"
         - "qrit"
+        - "qret"
+        - "9ret"
       arabic:
         - "قريت"
         - "قريت"
         - "قريت"
 
-  - canonical_arabizi: "nxdem"
+  - canonical_arabizi: "nkhdem"
     canonical_arabic: "نخدم"
     variants:
       arabizi:
@@ -850,13 +915,14 @@ entries:
         - "نخدم"
         - "نخدم"
 
-  - canonical_arabizi: "xdemt"
+  - canonical_arabizi: "khdemt"
     canonical_arabic: "خدمت"
     variants:
       arabizi:
         - "xdemt"
         - "5demt"
         - "khedemt"
+        - "jdemt"
       arabic:
         - "خدمت"
         - "خدمت"
