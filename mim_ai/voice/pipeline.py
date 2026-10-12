@@ -43,7 +43,7 @@ class VoicePipeline:
         voice_cfg:  VoiceSection,
         stt_cfg:    STTConfig,
         tts_cfg:    TTSConfig,
-        chatbot=None, intents=None, audit=None, normalizer=None,
+        chatbot=None, intents=None, audit=None, normalizer=None, normalizer_log=None,
     ) -> None:
         self.cfg = voice_cfg
         self.enabled = voice_cfg.enabled
@@ -53,6 +53,7 @@ class VoicePipeline:
         self.intents = intents
         self.audit = audit
         self.normalizer = normalizer
+        self.normalizer_log = normalizer_log
 
     def listen_and_reply(
         self, *, session_id: str = "default",
@@ -80,7 +81,18 @@ class VoicePipeline:
 
         # 3. Normalize
         if self.normalizer and self.cfg.use_normalizer:
-            transcript, _ = self.normalizer.normalize(transcript, return_report=True)
+            transcript, report = self.normalizer.normalize(transcript, return_report=True)
+            if self.normalizer_log is not None:
+                self.normalizer_log.emit(
+                    trace_id=trace_id,
+                    user_ref=user_ref,
+                    jargon_used=getattr(report, "jargon_used", {}),
+                    jargon_skipped=getattr(report, "jargon_skipped", {}),
+                    arabizi_used=getattr(report, "dictionary_hits", 0),
+                    arabizi_oov=int(getattr(report, "oov_arabizi", False)),
+                    rules_applied=getattr(report, "rule_applications", 0),
+                    duration_ms=int((time.perf_counter() - t0) * 1000),
+                )
 
         # 4. Intent
         intent_name, intent_score = None, 0.0

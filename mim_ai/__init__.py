@@ -103,6 +103,7 @@ class Mim:
                 self.config.voice, self.config.stt, self.config.tts,
                 chatbot=self.chatbot, intents=self.intents,
                 audit=self.audit, normalizer=self.normalizer,
+                normalizer_log=self.normalizer_log,
             )
         return self._voice
 

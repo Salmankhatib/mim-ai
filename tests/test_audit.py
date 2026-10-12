@@ -2,7 +2,10 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
+import numpy as np
+
 from mim_ai import MimConfig
+from mim_ai.voice.pipeline import VoicePipeline
 from mim_ai.audit import AuditLogger, NormalizerLogger
 from mim_ai.audit.backends import (
     MongoDBBackend,
@@ -110,3 +113,57 @@ def test_chatbot_supports_prompt_file_and_personalized_params(tmp_path):
     assert cfg.chatbot.system_prompt_file == str(prompt_file)
     assert cfg.chatbot.params["temperature"] == 0.2
     assert cfg.chatbot.roles["assistant"] == "concierge"
+
+
+def test_voice_pipeline_uses_configured_normalizer_and_audit(monkeypatch):
+    cfg = MimConfig.from_dict({
+        "voice": {"enabled": True, "use_normalizer": True, "use_audit_log": True},
+        "audit": {"enabled": True},
+        "logs": {"enabled": True},
+    })
+
+    audit_events = []
+    norm_events = []
+    norm_report = SimpleNamespace(
+        jargon_used={"m3nd": 2},
+        jargon_skipped={"foo": 1},
+        dictionary_hits=1,
+        oov_arabizi=0,
+        rule_applications=4,
+    )
+
+    normalizer = SimpleNamespace(
+        normalize=lambda text, return_report=True: ("salam", norm_report),
+    )
+    normalizer_log = SimpleNamespace(emit=lambda **kwargs: norm_events.append(kwargs))
+    audit = SimpleNamespace(emit=lambda **kwargs: audit_events.append(kwargs))
+
+    monkeypatch.setattr("mim_ai.voice.pipeline.record_until_silence", lambda *args, **kwargs: np.array([0.1, 0.2], dtype=np.float32))
+    monkeypatch.setattr("mim_ai.voice.pipeline.STT", lambda cfg: SimpleNamespace(transcribe=lambda audio, sr: "salam"))
+    monkeypatch.setattr("mim_ai.voice.pipeline.TTS", lambda cfg: SimpleNamespace(synthesize=lambda text: (np.array([0.5, 0.5], dtype=np.float32), 16000)))
+    monkeypatch.setattr("mim_ai.voice.pipeline.play", lambda *args, **kwargs: None)
+
+    pipeline = VoicePipeline(
+        cfg.voice,
+        cfg.stt,
+        cfg.tts,
+        chatbot=SimpleNamespace(
+            chat=lambda message, session_id, user_ref: SimpleNamespace(
+                text="reply",
+                tool_calls=[],
+                intent=None,
+                intent_score=0.0,
+            )
+        ),
+        intents=None,
+        audit=audit,
+        normalizer=normalizer,
+        normalizer_log=normalizer_log,
+    )
+
+    reply = pipeline.listen_and_reply(session_id="s1", user_ref="u1", play_audio=False)
+
+    assert reply.transcript == "salam"
+    assert reply.reply_text == "reply"
+    assert norm_events and norm_events[0]["jargon_used"] == {"m3nd": 2}
+    assert audit_events and audit_events[0]["event"] == "voice_turn"
