@@ -1,39 +1,4 @@
-# Base whole-word variant list.
-# Latin spellings stay Latin, Arabic spellings stay Arabic.
-# This is a simple lookup table, not a transliteration engine.
-
-# Greetings
-"salam": "salam"
-"slm": "salam"
-"labas": "labas"
-"lbas": "labas"
-"سلام": "سلام"
-
-# Common verbs / particles
-"bghit": "bghit"
-"b8it": "bghit"
-"b8yt": "bghit"
-"bgit": "bghit"
-"brit": "bghit"
-"بغيت": "بغيت"
-"بغيتة": "بغيت"
-"bgha": "bgha"
-"بغى": "بغى"
-"kayn": "kayn"
-"kayen": "kayn"
-"makayn": "makayn"
-"makayen": "makayn"
-"wa7ed": "wa7ed"
-"wahed": "wa7ed"
-"واحد": "واحد"
-
-# Negation
-"me3lich": "me3lich"
-"ma3lich": "me3lich"
-"m3lich": "me3lich"
-"معلش": "معلش"
-"دابا": "دابا"
-"دابة": "دابا"
-"daba": "daba"
-"daaba": "daba"
-"dabaa": "daba"
+# Deprecated compatibility stub.
+# This file is intentionally not used by the normalizer runtime.
+# Only the same-script variant bank in darija_variants.yaml is active.
+{}

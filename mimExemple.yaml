@@ -81,3 +81,5 @@ logs:
   backend: sqlite
   db_path: ./logs/normalizer.db
   retention_days: 7
+
+  

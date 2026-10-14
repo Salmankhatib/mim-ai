@@ -25,21 +25,16 @@ class ArabiziDictionary:
     @classmethod
     def from_config(cls, config: RulesConfig) -> "ArabiziDictionary":
         base_dir = Path(__file__).resolve().parent
-        base_dict_path = base_dir / "data" / "arabizi_darija.yaml"
         variant_dict_path = base_dir / "data" / "darija_variants.yaml"
         base_skip_path = base_dir / "data" / "skip_words.yaml"
 
-        base_data = load_yaml(base_dict_path)
         variant_data = load_yaml(variant_dict_path)
         skip_data = load_yaml(base_skip_path)
 
-        if not isinstance(base_data, dict):
-            raise TypeError(f"Base Arabizi dictionary must decode to a dict: {base_dict_path}")
         if not isinstance(skip_data, dict):
             raise TypeError(f"Base skip-words file must decode to a dict: {base_skip_path}")
 
-        table = dict(base_data)
-        table.update(cls._variant_table_from_data(variant_data))
+        table = cls._variant_table_from_data(variant_data)
         skip_set = {str(k).lower() for k in skip_data.keys()} if isinstance(skip_data, dict) else set()
 
         if config.arabizi_dict_path:

@@ -14,6 +14,7 @@ The returned {token: count} maps tell you exactly what to add.
 a compliance trail. Configure `capture_skipped_tokens=False` in
 production if user text is sensitive.
 """
+
 from __future__ import annotations
 
 import json
@@ -52,21 +53,35 @@ class NormalizerLogger:
         rules_applied: int = 0,
         urls_protected: int = 0,
         duration_ms: int | None = None,
-    ) -> None:
+    ) -> dict[str, object]:
         """
-        Write one normalizer event.
+        Write one normalizer event and return a human-readable summary.
 
-        `jargon_used`      : {custom_dict_key: count} that matched.
-        `jargon_skipped`   : {token: count} that missed every lookup —
-                             these are dictionary candidates.
+        The return value explicitly tells the caller whether the normalizer
+        ran, what it changed, and when the event occurred.
         """
+        ts = datetime.now(timezone.utc).isoformat()
+        summary: dict[str, object] = {
+            "called": True,
+            "when": ts,
+            "trace_id": trace_id,
+            "user_ref": user_ref,
+            "what_it_did": {
+                "dictionary_hits": arabizi_used,
+                "oov_detected": bool(arabizi_oov),
+                "rules_applied": rules_applied,
+                "urls_protected": urls_protected,
+                "code_switched": bool(code_switched),
+            },
+        }
+
         if not self.enabled:
-            return
+            return {**summary, "called": False, "what_it_did": {}}
 
         # Sampling — drop events probabilistically on high-traffic apps.
         if self.config.sample_rate < 1.0:
             if random.random() > self.config.sample_rate:
-                return
+                return {**summary, "called": False, "what_it_did": {}}
 
         used = dict(jargon_used or {}) if self.config.capture_jargon_used else {}
         skipped = dict(jargon_skipped or {}) if self.config.capture_jargon_skipped else {}
@@ -81,7 +96,7 @@ class NormalizerLogger:
             skipped = dict(list(skipped.items())[:cap])
 
         row = {
-            "ts":             datetime.now(timezone.utc).isoformat(),
+            "ts":             ts,
             "trace_id":       trace_id,
             "user_ref":       user_ref,
             "lang_detected":  lang_detected,
@@ -95,6 +110,17 @@ class NormalizerLogger:
             "duration_ms":    duration_ms,
         }
         self._backend.append(row)
+
+        summary["what_it_did"] = {
+            "dictionary_hits": arabizi_used,
+            "oov_detected": bool(arabizi_oov),
+            "rules_applied": rules_applied,
+            "urls_protected": urls_protected,
+            "code_switched": bool(code_switched),
+            "jargon_used": dict(used),
+            "jargon_skipped": dict(skipped),
+        }
+        return summary
 
     def purge_expired(self) -> int:
         if not self.enabled:

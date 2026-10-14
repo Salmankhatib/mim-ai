@@ -63,11 +63,43 @@ def test_normalizer_logger_accepts_database_adapter():
     )
 
     logger = NormalizerLogger(cfg)
-    logger.emit(trace_id="t-2", jargon_used={"wa7ed": 2}, jargon_skipped={"foo": 1})
+    result = logger.emit(
+        trace_id="t-2",
+        user_ref="u-42",
+        jargon_used={"wa7ed": 2},
+        jargon_skipped={"foo": 1},
+        arabizi_used=1,
+        arabizi_oov=0,
+        rules_applied=3,
+        duration_ms=12,
+    )
 
     assert len(RecordingAdapter.instances) == 1
     assert RecordingAdapter.instances[0].table == "normalizer_events"
     assert json.loads(RecordingAdapter.instances[0].rows[0]["jargon_used"]) == {"wa7ed": 2}
+    assert result["called"] is True
+    assert result["when"]
+    assert result["what_it_did"]["dictionary_hits"] == 1
+    assert result["what_it_did"]["rules_applied"] == 3
+
+
+def test_audit_logger_returns_summary_for_called_event():
+    cfg = AuditConfig(enabled=True, backend="sqlite", db_path="./tmp/test_audit.db", adapter=RecordingAdapter, collection="audit_events")
+    logger = AuditLogger(cfg)
+    result = logger.emit(
+        event="normalize",
+        trace_id="t-3",
+        user_ref="u-99",
+        input_text="b8it nchouf daaba",
+        output_text="bghit nchouf daba",
+        duration_ms=7,
+        status="ok",
+    )
+
+    assert result["called"] is True
+    assert result["when"]
+    assert result["what_it_did"]["event"] == "normalize"
+    assert result["what_it_did"]["status"] == "ok"
 
 
 def test_database_backend_factory_builds_native_backends():

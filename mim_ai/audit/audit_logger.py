@@ -51,19 +51,31 @@ class AuditLogger:
         status: str = "ok",
         config_hash: str | None = None,
         extra: dict[str, Any] | None = None,
-    ) -> None:
+    ) -> dict[str, object]:
         """
-        Write one audit event.
+        Write one audit event and return a machine-readable summary.
 
-        `input_text` / `output_text` are hashed here — the raw strings
-        are NEVER written to the log. Pass them as kwargs for
-        convenience; the logger takes care of the rest.
+        The returned dict clearly states whether the audit logger was used,
+        what it recorded, and when it happened.
         """
+        ts = datetime.now(timezone.utc).isoformat()
+        summary: dict[str, object] = {
+            "called": True,
+            "when": ts,
+            "trace_id": trace_id,
+            "user_ref": user_ref,
+            "what_it_did": {
+                "event": event,
+                "status": status,
+                "duration_ms": duration_ms,
+            },
+        }
+
         if not self.enabled:
-            return
+            return {**summary, "called": False, "what_it_did": {}}
 
         row = {
-            "ts":           datetime.now(timezone.utc).isoformat(),
+            "ts":           ts,
             "trace_id":     trace_id,
             "event":        event,
             "user_ref":     user_ref,
@@ -86,6 +98,15 @@ class AuditLogger:
             row["line_hash"] = _line_hash(row)
 
         self._backend.append(row)
+        summary["what_it_did"] = {
+            "event": event,
+            "status": status,
+            "duration_ms": duration_ms,
+            "config_hash": config_hash,
+            "input_hash": _hash(input_text),
+            "output_hash": _hash(output_text),
+        }
+        return summary
 
     # -----------------------------------------------------------------
     # Law 09-08 helpers — rights of access and erasure
