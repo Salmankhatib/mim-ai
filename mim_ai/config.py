@@ -9,6 +9,7 @@ import yaml
 DEFAULT_CONFIG_SOURCE = "mim_ai/default_config.yaml"
 
 from .audit.config import AuditConfig, NormalizerLogConfig
+from .anonymizer.config import AnonymizerConfig
 from .chatbot.config import ChatbotConfig
 from .intents.config import IntentConfig
 from .normalizer.schema import NormalizerConfig
@@ -122,6 +123,7 @@ class MimConfig:
     """Top-level application config that binds the optional subsystems."""
 
     normalizer: NormalizerConfig = field(default_factory=NormalizerConfig)
+    anonymizer: AnonymizerConfig = field(default_factory=AnonymizerConfig)
     audit: AuditConfig = field(default_factory=AuditConfig)
     logs: NormalizerLogConfig = field(default_factory=NormalizerLogConfig)
     chatbot: ChatbotConfig = field(default_factory=ChatbotConfig)
@@ -138,6 +140,10 @@ class MimConfig:
         normalizer_cfg = data.get("normalizer", {})
         if isinstance(normalizer_cfg, dict):
             cfg.normalizer = NormalizerConfig.from_mapping(normalizer_cfg)
+
+        anonymizer_cfg = data.get("anonymizer", {})
+        if isinstance(anonymizer_cfg, dict):
+            cfg.anonymizer = AnonymizerConfig.from_mapping(anonymizer_cfg)
 
         audit_cfg = data.get("audit", {})
         if isinstance(audit_cfg, dict):

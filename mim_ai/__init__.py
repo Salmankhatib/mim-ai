@@ -22,6 +22,8 @@ Config-first, model-agnostic toolkit for Moroccan Darija AI.
 """
 from __future__ import annotations
 
+from . import anonymizer
+from .anonymizer import AnonymizationResult, anonymize
 from .config import load_config, MimConfig, write_default_config
 
 __version__ = "0.1.0"
@@ -143,4 +145,13 @@ class Mim:
             setattr(self, attr, None)
 
 
-__all__ = ["Mim", "MimConfig", "load_config", "write_default_config", "__version__"]
+__all__ = [
+    "Mim",
+    "MimConfig",
+    "load_config",
+    "write_default_config",
+    "anonymizer",
+    "anonymize",
+    "AnonymizationResult",
+    "__version__",
+]

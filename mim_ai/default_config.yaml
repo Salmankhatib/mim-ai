@@ -29,6 +29,14 @@ normalizer:
     max_tokens: 256
     fallback_on_timeout: true
 
+anonymizer:
+  enabled: true
+  default_operators:
+    DEFAULT: replace
+    CIN_MA: replace
+    PHONE_MA: mask
+  custom_patterns: []
+
 chatbot:
   enabled: true
   system_prompt: darija

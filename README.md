@@ -27,6 +27,7 @@ That's a week of work before the first feature ships. **MIM is an opinionated an
 A small Python SDK that gives Moroccan developers a **drop-in pipeline** for Darija text and voice:
 
 - 🧹 **Normalizer** — Cleans real-world Darija (Arabizi, code-switching, inconsistent orthography) before it hits a model.
+- 🛡️ **Anonymizer** — Config-first PII redaction using Presidio, with Morocco-specific CIN and phone patterns.
 - 🤖 **Chatbot** — Wraps any LLM with tools, sessions, and intent classification.
 - 🎙️ **Voice** — STT, TTS, and a full listen-and-reply pipeline.
 - 📜 **Logging** — Audit trail aligned with Moroccan law 09-08 and ISO 42001.
@@ -66,6 +67,10 @@ mim = Mim.from_config("mimExemple.yaml")
 
 # Chat
 reply = mim.chat("salam, chkoun nta?", session_id="user-42")
+
+# Anonymize text
+redacted = anonymizer.anonymize("Mon CIN est AB123456 et mon tel est 0612345678")
+print(redacted.text)
 
 # Voice pipeline
 voice = mim.listen_and_reply(session_id="user-42")
@@ -115,6 +120,7 @@ This is a **Made in Morocco** tool, built in phase with the national AI strategy
 
 ```text
 mim_ai/
+├── anonymizer/   # Config-first PII redaction with Presidio + Morocco-specific rules
 ├── normalizer/   # Fast, config-first Darija text normalization
 ├── chatbot/      # LLM wrapper with tools, sessions, intents
 ├── voice/        # STT, TTS, VAD, full listen-and-reply pipeline
@@ -132,6 +138,7 @@ mim_ai/
 
 - English: [docs/EN/tutorial.md](docs/EN/tutorial.md)
 - Français: [docs/FR/tutorial.md](docs/FR/tutorial.md)
+- Anonymizer guide: [docs/anonymizer/README.md](docs/anonymizer/README.md)
 - Architecture: [docs/EN/architecture.md](docs/EN/architecture.md) / [docs/FR/architecture.md](docs/FR/architecture.md)
 - Contributing: [docs/EN/contributing.md](docs/EN/contributing.md) / [docs/FR/contributing.md](docs/FR/contributing.md)
 - Manifesto: [docs/EN/manifesto.md](docs/EN/manifesto.md) / [docs/FR/manifesto.md](docs/FR/manifesto.md)
