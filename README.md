@@ -60,26 +60,27 @@ Define your models, keys, and pipeline settings in the canonical project config.
 ### 3. Use It
 
 ```python
-from mim_ai import Mim
+import os
+
+from mim_ai import Mim, anonymizer
 
 # Initialize from config
 mim = Mim.from_config("config.yaml")
 
-# Chat
-reply = mim.chat("salam, chkoun nta?", session_id="user-42")
+# Local-safe flow: normalization + anonymization work without external services.
+normalized = mim.normalizer.normalize("salam wa7ed 3la ekher")
+print(normalized)
 
-# Anonymize text
-redacted = anonymizer.anonymize("Mon CIN est AB123456 et mon tel est 0612345678")
+redacted = anonymizer.anonymize("Mon CIN est AB58075 et mon tel est 0612345678")
 print(redacted.text)
 
-# Voice pipeline
-voice = mim.listen_and_reply(session_id="user-42")
+# Chat and voice require configured provider credentials and a reachable endpoint.
+if mim.config.chatbot.enabled and os.getenv(mim.config.chatbot.llm_api_key_env):
+    reply = mim.chat("salam, chkoun nta?", session_id="user-42")
+    print(reply.text)
 
-# Transcribe a WAV file
-text = mim.transcribe_file("call.wav")
-
-# If you want the app to speak a response, plug in a provider-backed TTS config
-# and call the voice pipeline instead of a bare helper.
+# Voice pipeline is available when audio + provider settings are enabled.
+# voice = mim.listen_and_reply(session_id="user-42")
 ```
 
 ---
@@ -109,7 +110,9 @@ For a voice pipeline, that's the difference between a live conversation and a la
 This is a **Made in Morocco** tool, built in phase with the national AI strategy:
 
 * **Aligned with AI Made in Morocco 2030** — Contributing toward the 100B MAD GDP target, 50,000 jobs target, and 200,000 trained talents target.
+
 * **Ecosystem Integration** — Built to plug directly into the sovereign AI marketplace and to serve Idarati AI and public-facing services.
+
 * **Compliant by Design** — Aligned with **Law 09-08** (audit logs hash user text, honor erasure requests, and expire on schedule) and **ISO 42001**.
 
 *MIM is not infrastructure. It's the glue between the infrastructure Morocco is building and the applications Morocco's developers want to ship.*

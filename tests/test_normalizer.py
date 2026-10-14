@@ -273,3 +273,15 @@ class TestConfigAndWiring:
 
         bot = Chatbot.from_config(cfg)
         assert bot.history.__class__.__name__ == "SQLiteHistoryStore"
+
+
+def test_readme_local_dev_flow_works_without_external_llm():
+    from mim_ai import Mim, anonymizer
+
+    app = Mim.from_config("config.yaml")
+    normalized = app.normalizer.normalize("salam wa7ed 3la ekher")
+    result = anonymizer.anonymize("Mon CIN est AB58075 et mon tel est 0612345678")
+
+    assert "salam" in normalized
+    assert any(item["type"] == "CIN_MA" for item in result.entities_found)
+    assert any(item["type"] == "PHONE_MA" for item in result.entities_found)
