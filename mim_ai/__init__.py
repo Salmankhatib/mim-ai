@@ -22,11 +22,22 @@ Config-first, model-agnostic toolkit for Moroccan Darija AI.
 """
 from __future__ import annotations
 
-from . import anonymizer
-from .anonymizer import AnonymizationResult, anonymize
 from .config import load_config, MimConfig, write_default_config
 
 __version__ = "0.1.0"
+
+
+def __getattr__(name: str):
+    if name == "anonymizer":
+        import importlib
+        return importlib.import_module(".anonymizer", __name__)
+    if name == "anonymize":
+        from .anonymizer import anonymize
+        return anonymize
+    if name == "AnonymizationResult":
+        from .anonymizer import AnonymizationResult
+        return AnonymizationResult
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 class Mim:

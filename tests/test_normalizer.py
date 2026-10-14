@@ -275,6 +275,20 @@ class TestConfigAndWiring:
         assert bot.history.__class__.__name__ == "SQLiteHistoryStore"
 
 
+def test_normalizer_import_does_not_eagerly_load_anonymizer():
+    import importlib
+    import sys
+
+    for key in ["mim_ai.anonymizer", "mim_ai"]:
+        sys.modules.pop(key, None)
+
+    pkg = importlib.import_module("mim_ai")
+    importlib.import_module("mim_ai.normalizer")
+
+    assert "mim_ai.anonymizer" not in sys.modules
+    assert hasattr(pkg, "Mim")
+
+
 def test_readme_local_dev_flow_works_without_external_llm():
     from mim_ai import Mim, anonymizer
 
