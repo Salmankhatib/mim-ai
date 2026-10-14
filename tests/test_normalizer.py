@@ -289,6 +289,36 @@ def test_normalizer_import_does_not_eagerly_load_anonymizer():
     assert hasattr(pkg, "Mim")
 
 
+def test_optional_subsystems_stay_lazy_loaded():
+    import importlib
+    import sys
+
+    for key in [
+        "mim_ai.chatbot", "mim_ai.chatbot.chatbot", "mim_ai.chatbot.config", "mim_ai.chatbot.llm",
+        "mim_ai.audit", "mim_ai.audit.config", "mim_ai.audit.audit_logger", "mim_ai.audit.normalizer_logger",
+        "mim_ai.intents", "mim_ai.intents.config", "mim_ai.intents.registry",
+        "mim_ai.anonymizer", "mim_ai.anonymizer.anonymizer", "mim_ai.anonymizer.config",
+    ]:
+        sys.modules.pop(key, None)
+
+    import mim_ai
+
+    assert "mim_ai.chatbot" not in sys.modules
+    assert "mim_ai.audit" not in sys.modules
+    assert "mim_ai.intents" not in sys.modules
+    assert "mim_ai.anonymizer" not in sys.modules
+
+    chat_mod = importlib.import_module("mim_ai.chatbot")
+    assert chat_mod.ChatbotConfig is not None
+    assert "mim_ai.chatbot.chatbot" not in sys.modules
+
+    audit_mod = importlib.import_module("mim_ai.audit")
+    assert audit_mod.AuditConfig is not None
+    assert "mim_ai.audit.audit_logger" not in sys.modules
+
+    assert hasattr(mim_ai, "Mim")
+
+
 def test_readme_local_dev_flow_works_without_external_llm():
     from mim_ai import Mim, anonymizer
 

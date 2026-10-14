@@ -141,7 +141,7 @@ mim_ai/
 
 - English: [docs/EN/tutorial.md](docs/EN/tutorial.md)
 - Français: [docs/FR/tutorial.md](docs/FR/tutorial.md)
-- Anonymizer guide: [docs/anonymizer/README.md](docs/anonymizer/README.md)
+- Anonymizer usage: [docs/EN/features/audit.md](docs/EN/features/audit.md) and the examples in [examples/project_example.py](examples/project_example.py)
 - Architecture: [docs/EN/architecture.md](docs/EN/architecture.md) / [docs/FR/architecture.md](docs/FR/architecture.md)
 - Contributing: [docs/EN/contributing.md](docs/EN/contributing.md) / [docs/FR/contributing.md](docs/FR/contributing.md)
 - Manifesto: [docs/EN/manifesto.md](docs/EN/manifesto.md) / [docs/FR/manifesto.md](docs/FR/manifesto.md)
