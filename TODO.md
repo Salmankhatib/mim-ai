@@ -3,7 +3,7 @@
 1. Make sure the Normlizer works and is simple + does not turnicate.
 
 2. Make sure logs are ok, audit + normlizer logs.
-        - 1. Configurable configuration to a specific db.
+        - 1. Configurable to a specific db.
         - 2. If not a sql db as backup.
 
 3. Refactor the STT, TSS and the pipline (STT - LLM - TSS).

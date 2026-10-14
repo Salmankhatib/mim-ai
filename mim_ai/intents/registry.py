@@ -63,6 +63,27 @@ class IntentRegistry:
             raise ValueError(f"Intent {intent.name!r} already registered")
         self._intents[intent.name] = intent
 
+    def add_intent(
+        self,
+        *,
+        name: str,
+        description: str,
+        examples: list[str] | None = None,
+        tool: str | None = None,
+    ) -> Intent:
+        """Register a new intent at runtime from a module or STT callback."""
+        intent = Intent(
+            name=name,
+            description=description,
+            examples=list(examples or []),
+            tool=tool,
+        )
+        self.register(intent)
+        return intent
+
+    # Convenience alias for dynamic registration from app code.
+    add = add_intent
+
     def load_yaml(self, path: str | Path) -> int:
         """Load intents from a YAML file. Returns count loaded."""
         data = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
@@ -110,6 +131,9 @@ class IntentRegistry:
         per call, and good enough for the short phrases users actually
         type. If you outgrow it, swap in a sentence-transformer.
         """
+        if text is None:
+            return None, 0.0
+
         norm_text = _normalize(text)
         tokens = set(norm_text.split())
         if not tokens:
@@ -180,8 +204,13 @@ _PUNCT_RE = re.compile(r"[^\w\s]", re.UNICODE)
 _WS_RE = re.compile(r"\s+")
 
 
-def _normalize(text: str) -> str:
+def _normalize(text: str | None) -> str:
     """Lowercase, strip accents, drop punctuation, collapse whitespace."""
+    if text is None:
+        return ""
+    text = str(text)
+    if not text.strip():
+        return ""
     # Decompose accented Latin letters and drop combining marks.
     text = unicodedata.normalize("NFKD", text)
     text = "".join(c for c in text if not unicodedata.combining(c))

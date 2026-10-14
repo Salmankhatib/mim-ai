@@ -55,4 +55,4 @@ tmp/
 *.log
 
 ## Miscellaneous
-*.TODO.MD
+/TODO.md
