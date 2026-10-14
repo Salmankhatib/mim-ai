@@ -53,7 +53,7 @@ The app uses a layered composition model:
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("mimExemple.yaml")
+app = Mim.from_config("config.yaml")
 ```
 
 At runtime, subsystems are created lazily. If a feature is disabled in config, it is not built.

@@ -6,7 +6,7 @@ Config-first, model-agnostic toolkit for Moroccan Darija AI.
 
     from mim_ai import Mim
 
-    mim = Mim.from_config("mim.yaml")
+    mim = Mim.from_config("config.yaml")
 
     # Chat
     reply = mim.chat("salam, chkoun nta?", session_id="u1")
@@ -49,7 +49,7 @@ class Mim:
         self._voice = None
 
     @classmethod
-    def from_config(cls, path: str = "mimExemple.yaml") -> "Mim":
+    def from_config(cls, path: str = "config.yaml") -> "Mim":
         return cls(load_config(path))
 
     # ------------------------------------------------------------------

@@ -13,7 +13,7 @@ Les développeurs n’ont pas envie de reconstruire la même pile de conversatio
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("mimExemple.yaml")
+app = Mim.from_config("config.yaml")
 reply = app.chat("salam, chkoun nta?", session_id="demo")
 print(reply.text)
 ```

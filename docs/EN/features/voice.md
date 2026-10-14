@@ -13,7 +13,7 @@ Voice is one of the most human ways to interact with an app, especially in call-
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("mimExemple.yaml")
+app = Mim.from_config("config.yaml")
 reply = app.listen_and_reply(session_id="demo")
 print(reply.transcript)
 print(reply.reply_text)

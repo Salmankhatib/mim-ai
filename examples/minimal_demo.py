@@ -20,7 +20,7 @@ from mim_ai import Mim
 
 
 def main() -> None:
-    config_path = os.environ.get("MIM_CONFIG", "mimExemple.yaml")
+    config_path = os.environ.get("MIM_CONFIG", "config.yaml")
     app = Mim.from_config(config_path)
 
     sample = "salam wa7ed 3la ekher, bghit n3ref kifach nt3amro app?"

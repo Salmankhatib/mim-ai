@@ -14,7 +14,7 @@ def main() -> int:
         nargs="?",
         help="Create a default config file for a project.",
     )
-    parser.add_argument("path", nargs="?", default="mimExemple.yaml", help="Target config path")
+    parser.add_argument("path", nargs="?", default="config.yaml", help="Target config path")
     args = parser.parse_args()
 
     if args.command == "init":

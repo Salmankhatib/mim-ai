@@ -149,11 +149,21 @@ def test_chatbot_supports_prompt_file_and_personalized_params(tmp_path):
 
 def test_load_config_creates_default_yaml_when_missing(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    cfg = load_config("mimExemple.yaml")
+    cfg = load_config("config.yaml")
 
-    assert (tmp_path / "mimExemple.yaml").exists()
+    assert (tmp_path / "config.yaml").exists()
     assert cfg.chatbot.enabled is True
     assert cfg.voice.enabled is True
+
+
+def test_config_yaml_takes_priority_over_legacy_alias(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.yaml").write_text("chatbot:\n  enabled: false\n", encoding="utf-8")
+    (tmp_path / "mimExemple.yaml").write_text("chatbot:\n  enabled: true\n", encoding="utf-8")
+
+    cfg = load_config()
+
+    assert cfg.chatbot.enabled is False
 
 
 def test_voice_pipeline_uses_configured_normalizer_and_audit(monkeypatch):

@@ -13,7 +13,7 @@ Production AI systems need accountability. Audit logs support compliance review 
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("mimExemple.yaml")
+app = Mim.from_config("config.yaml")
 app.chat("salam", session_id="demo")
 ```
 

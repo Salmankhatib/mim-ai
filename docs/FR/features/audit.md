@@ -13,7 +13,7 @@ Les systèmes IA de production ont besoin de responsabilité. Les logs d’audit
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("mimExemple.yaml")
+app = Mim.from_config("config.yaml")
 app.chat("salam", session_id="demo")
 ```
 

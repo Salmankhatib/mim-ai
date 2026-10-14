@@ -13,7 +13,7 @@ Developers do not want to rebuild the same conversation stack each time. The cha
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("mimExemple.yaml")
+app = Mim.from_config("config.yaml")
 reply = app.chat("salam, chkoun nta?", session_id="demo")
 print(reply.text)
 ```

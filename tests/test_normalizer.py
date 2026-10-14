@@ -234,7 +234,7 @@ class TestConfigAndWiring:
     def test_example_yaml_is_the_default_loader_target(self):
         from mim_ai import load_config
 
-        cfg = load_config("mimExemple.yaml")
+        cfg = load_config("config.yaml")
         assert cfg.normalizer.enabled is True
         assert cfg.audit.enabled is True
         assert cfg.logs.enabled is True
@@ -242,7 +242,7 @@ class TestConfigAndWiring:
     def test_logger_switches_are_config_driven(self):
         from mim_ai import load_config
 
-        cfg = load_config("mimExemple.yaml")
+        cfg = load_config("config.yaml")
         cfg.audit.enabled = False
         cfg.logs.enabled = False
 
@@ -252,7 +252,7 @@ class TestConfigAndWiring:
     def test_normalizer_llm_layer_stays_off_by_default(self):
         from mim_ai import load_config
 
-        cfg = load_config("mimExemple.yaml")
+        cfg = load_config("config.yaml")
         assert cfg.normalizer.enabled is True
         assert cfg.normalizer.llm.enabled is False
 

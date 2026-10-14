@@ -9,7 +9,7 @@ from mim_ai import Mim
 
 app = FastAPI(title="MIM Demo API", version="0.1.0")
 
-config_path = os.environ.get("MIM_CONFIG", "mimExemple.yaml")
+config_path = os.environ.get("MIM_CONFIG", "config.yaml")
 service = Mim.from_config(config_path)
 
 

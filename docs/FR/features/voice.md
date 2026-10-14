@@ -13,7 +13,7 @@ La voix est l’un des moyens les plus naturels d’interagir avec une applicati
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("mimExemple.yaml")
+app = Mim.from_config("config.yaml")
 reply = app.listen_and_reply(session_id="demo")
 print(reply.transcript)
 print(reply.reply_text)

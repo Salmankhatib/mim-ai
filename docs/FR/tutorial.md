@@ -16,12 +16,12 @@ pip install -e .
 
 ## 2. Démarrer avec la config fournie
 
-Le package est conçu pour fonctionner en mode config-first. Le fichier d’exemple par défaut est `mimExemple.yaml`.
+Le package est conçu pour fonctionner en mode config-first. Le fichier d’exemple par défaut est `config.yaml`.
 
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("mimExemple.yaml")
+app = Mim.from_config("config.yaml")
 ```
 
 ## 3. Normaliser le texte Darija
@@ -73,7 +73,7 @@ Une petite application peut être construite avec :
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("mimExemple.yaml")
+app = Mim.from_config("config.yaml")
 
 raw = "salam, 3ndna 9a9a"
 clean = app.normalizer.normalize(raw)

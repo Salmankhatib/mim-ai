@@ -199,14 +199,14 @@ def _candidate_paths(path: str | None) -> list[Path]:
     if path:
         return [Path(path)]
     return [
+        Path("config.yaml"),
         Path("mimExemple.yaml"),
         Path("mimExemple.yml"),
-        Path("config.yaml"),
     ]
 
 
-def write_default_config(path: str | Path = "mimExemple.yaml", *, overwrite: bool = False) -> Path:
-    """Create a working default config file in the target directory."""
+def write_default_config(path: str | Path = "config.yaml", *, overwrite: bool = False) -> Path:
+    """Create the canonical default config file in the target directory."""
     target = Path(path)
     candidates = [target]
     if not target.is_absolute():
@@ -227,8 +227,8 @@ def write_default_config(path: str | Path = "mimExemple.yaml", *, overwrite: boo
     raise PermissionError(f"Unable to write default config to {target} or {Path.home() / target.name}")
 
 
-def load_config(path: str | None = "mimExemple.yaml") -> MimConfig:
-    """Load application config from a project YAML, creating a default one if missing."""
+def load_config(path: str | None = "config.yaml") -> MimConfig:
+    """Load application config from the canonical project YAML, creating a default one if missing."""
     candidates = _candidate_paths(path)
     for candidate in candidates:
         if candidate.exists():

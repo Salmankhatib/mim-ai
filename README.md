@@ -53,9 +53,9 @@ pip install mim-ai
 
 ```
 
-### 2. Configure (`mimExemple.yaml`)
+### 2. Configure (`config.yaml`)
 
-Define your models, keys, and pipeline settings in the example config shipped with the package. The loader defaults to `mimExemple.yaml` when no path is passed.
+Define your models, keys, and pipeline settings in the canonical project config. The loader defaults to `config.yaml` when no path is passed.
 
 ### 3. Use It
 
@@ -63,7 +63,7 @@ Define your models, keys, and pipeline settings in the example config shipped wi
 from mim_ai import Mim
 
 # Initialize from config
-mim = Mim.from_config("mimExemple.yaml")
+mim = Mim.from_config("config.yaml")
 
 # Chat
 reply = mim.chat("salam, chkoun nta?", session_id="user-42")
