@@ -45,6 +45,11 @@ dev = [
     "pytest-cov>=4.0",
     "black>=23.0",
     "ruff>=0.1.0",
+    "build>=1.2.0",
+    "twine>=5.0.0",
+]
+voice = [
+    "soundfile>=0.12.1",
 ]
 postgresql = [
     "psycopg[binary]>=3.1.0",
@@ -59,6 +64,13 @@ production = [
     "psycopg[binary]>=3.1.0",
     "PyMySQL>=1.1.0",
     "pymongo>=4.8.0",
+    "soundfile>=0.12.1",
+]
+all = [
+    "psycopg[binary]>=3.1.0",
+    "PyMySQL>=1.1.0",
+    "pymongo>=4.8.0",
+    "soundfile>=0.12.1",
 ]
 
 [tool.setuptools]

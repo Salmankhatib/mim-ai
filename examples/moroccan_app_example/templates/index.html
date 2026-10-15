@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Moroccan App Example</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 2rem; background: #f5f7fb; color: #1d2433; }
+      .card { max-width: 980px; margin: 0 auto; background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+      form { display: grid; gap: 0.8rem; margin-bottom: 1.5rem; }
+      textarea, input, button { font: inherit; }
+      textarea, input[type="file"] { width: 100%; box-sizing: border-box; padding: 0.75rem; border: 1px solid #dbe3f0; border-radius: 8px; }
+      button { padding: 0.75rem 1rem; border: none; border-radius: 8px; background: #1d4ed8; color: white; cursor: pointer; }
+      button.secondary { background: #4f46e5; }
+      .row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+      .result { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; white-space: pre-wrap; }
+      audio { margin-top: 0.75rem; width: 100%; }
+      .status { font-size: 0.9rem; color: #475569; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Moroccan Darija App</h1>
+      <p class="status">Demo auth token: <strong>demo-moroccan-token</strong></p>
+
+      <form id="normalize-form">
+        <label for="normalize-text">Normalize text</label>
+        <textarea id="normalize-text" rows="4">salam wa7ed 3la ekher, bghit n3ref l status dyal order-123456</textarea>
+        <div class="row">
+          <button type="submit">Normalize</button>
+        </div>
+      </form>
+      <div id="normalize-result" class="result">Result will appear here.</div>
+
+      <form id="chat-form">
+        <label for="chat-message">Chat</label>
+        <textarea id="chat-message" rows="3">salam, bghit n3ref status lorder dyali</textarea>
+        <div class="row">
+          <button class="secondary" type="submit">Ask agent</button>
+        </div>
+      </form>
+      <div id="chat-result" class="result">Reply will appear here.</div>
+
+      <form id="transcribe-form">
+        <label for="audio-file">Transcribe Darija MP3/WAV</label>
+        <input id="audio-file" type="file" accept="audio/*,.mp3,.wav" />
+        <div class="row">
+          <button class="secondary" type="submit">Transcribe</button>
+        </div>
+      </form>
+      <div id="transcribe-result" class="result">Transcript will appear here.</div>
+
+      <form id="readout-form">
+        <label for="readout-text">Read text aloud</label>
+        <textarea id="readout-text" rows="3">Salam, l service dyalna 3ndek 7na bghina nkhassrkoum</textarea>
+        <div class="row">
+          <button type="submit">Read out</button>
+        </div>
+      </form>
+      <audio id="readout-player" controls></audio>
+    </div>
+
+    <script>
+      const token = 'demo-moroccan-token';
+
+      async function doFetch(url, method = 'GET', body = null, isJson = true) {
+        const headers = { Authorization: `Bearer ${token}` };
+        if (isJson && body && !(body instanceof FormData)) {
+          headers['Content-Type'] = 'application/json';
+        }
+        const response = await fetch(url, {
+          method,
+          headers,
+          body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Request failed');
+        }
+        return response;
+      }
+
+      document.getElementById('normalize-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const text = document.getElementById('normalize-text').value;
+        const response = await doFetch('/api/normalize', 'POST', { text });
+        const data = await response.json();
+        document.getElementById('normalize-result').textContent = JSON.stringify(data, null, 2);
+      });
+
+      document.getElementById('chat-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const message = document.getElementById('chat-message').value;
+        const response = await doFetch('/api/chat', 'POST', { message, session_id: 'demo-session' });
+        const data = await response.json();
+        document.getElementById('chat-result').textContent = JSON.stringify(data, null, 2);
+      });
+
+      document.getElementById('transcribe-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const fileInput = document.getElementById('audio-file');
+        const file = fileInput.files[0];
+        if (!file) {
+          alert('Please choose an audio file first.');
+          return;
+        }
+        const formData = new FormData();
+        formData.append('audio_file', file);
+        const response = await fetch('/api/transcribe', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        if (!response.ok) {
+          alert(await response.text());
+          return;
+        }
+        const data = await response.json();
+        document.getElementById('transcribe-result').textContent = JSON.stringify(data, null, 2);
+      });
+
+      document.getElementById('readout-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const text = document.getElementById('readout-text').value;
+        const response = await fetch('/api/read-out', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text }),
+        });
+        if (!response.ok) {
+          alert(await response.text());
+          return;
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const audioPlayer = document.getElementById('readout-player');
+        audioPlayer.src = url;
+        audioPlayer.play();
+      });
+    </script>
+  </body>
+</html>

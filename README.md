@@ -50,7 +50,12 @@ A small Python SDK that gives Moroccan developers a **drop-in pipeline** for Dar
 
 ```bash
 pip install mim-ai
+```
 
+Optional extras for voice/media work:
+
+```bash
+pip install "mim-ai[voice]"
 ```
 
 ### 2. Configure (`config.yaml`)
@@ -62,7 +67,7 @@ Define your models, keys, and pipeline settings in the canonical project config.
 ```python
 import os
 
-from mim_ai import Mim, anonymizer
+from mim_ai import Mim, normlizer
 
 # Initialize from config
 mim = Mim.from_config("config.yaml")
@@ -137,7 +142,29 @@ mim_ai/
 
 ---
 
-## 📚 Documentation
+## � PyPI release checklist
+
+Before publishing a release candidate:
+
+```bash
+python -m pip install --upgrade build twine
+python -m build
+python -m twine check dist/*
+```
+
+Then upload to TestPyPI first:
+
+```bash
+python -m twine upload --repository testpypi dist/*
+```
+
+And finally to PyPI:
+
+```bash
+python -m twine upload dist/*
+```
+
+## �📚 Documentation
 
 - English: [docs/EN/tutorial.md](docs/EN/tutorial.md)
 - Français: [docs/FR/tutorial.md](docs/FR/tutorial.md)

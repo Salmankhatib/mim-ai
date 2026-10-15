@@ -1,0 +1,28 @@
+- name: greeting
+  examples:
+    - salam
+    - 3la salam
+    - hi
+    - bonjour
+  score: 0.9
+
+- name: order_status
+  examples:
+    - wa9t lkhbar
+    - status lorder
+    - chno katra
+    - how is my order
+
+- name: support
+  examples:
+    - bghit a3awnni
+    - 3ndi problem
+    - support
+    - can you help me
+
+- name: complaint
+  examples:
+    - nkhatar
+    - complaint
+    - ghalat
+    - I am unhappy
