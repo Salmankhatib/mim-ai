@@ -51,10 +51,18 @@ def _json_request(url: str, payload: dict[str, Any], config: Any) -> Any:
     try:
         with request.urlopen(req, timeout=(getattr(config, "timeout_ms", 20000) / 1000) or 20) as resp:
             raw = resp.read()
+            headers = getattr(resp, "headers", {})
+            content_type = None
+            if hasattr(headers, "get_content_type"):
+                content_type = headers.get_content_type()
+            elif isinstance(headers, dict):
+                content_type = headers.get("Content-Type")
     except Exception as exc:  # pragma: no cover - transport dependent
         raise APIError(f"HTTP request failed for {url}: {exc}") from exc
     if not raw:
         return {}
+    if content_type and content_type.startswith("audio/"):
+        return raw
     try:
         return json.loads(raw.decode("utf-8"))
     except json.JSONDecodeError:
@@ -112,14 +120,18 @@ def transcribe(config: Any, wav_bytes: bytes) -> str:
 def speak(config: Any, text: str) -> tuple[bytes, str]:
     """Call an OpenAI-compatible speech endpoint and return raw bytes."""
     url = urljoin(_api_base_url(config) + "/", "audio/speech")
+    fmt = (getattr(config, "format", None) or "wav").lower()
     payload = {
         "model": getattr(config, "model", "tts-1"),
         "input": text,
         "voice": getattr(config, "voice", "nova"),
+        "response_format": fmt,
     }
     result = _json_request(url, payload, config)
     if isinstance(result, (bytes, bytearray)):
-        return bytes(result), "audio/wav"
+        return bytes(result), f"audio/{fmt if fmt != 'pcm' else 'pcm'}"
+    if isinstance(result, dict) and isinstance(result.get("raw"), (bytes, bytearray)):
+        return bytes(result["raw"]), f"audio/{fmt if fmt != 'pcm' else 'pcm'}"
 
     # Some providers return the audio bytes directly via a raw response body,
     # not a JSON object.
@@ -132,7 +144,13 @@ def speak(config: Any, text: str) -> tuple[bytes, str]:
     try:
         with request.urlopen(req, timeout=(getattr(config, "timeout_ms", 20000) / 1000) or 20) as resp:
             raw = resp.read()
-            mime = resp.headers.get_content_type() or "audio/wav"
+            headers = getattr(resp, "headers", {})
+            if hasattr(headers, "get_content_type"):
+                mime = headers.get_content_type() or f"audio/{fmt if fmt != 'pcm' else 'pcm'}"
+            elif isinstance(headers, dict):
+                mime = headers.get("Content-Type") or f"audio/{fmt if fmt != 'pcm' else 'pcm'}"
+            else:
+                mime = f"audio/{fmt if fmt != 'pcm' else 'pcm'}"
             return raw, mime
     except Exception as exc:  # pragma: no cover
         raise APIError(f"Speech request failed: {exc}") from exc

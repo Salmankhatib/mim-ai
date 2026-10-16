@@ -1,6 +1,9 @@
 import pytest
 
+from mim_ai.chatbot.chatbot import Chatbot
+from mim_ai.chatbot.config import ChatbotConfig
 from mim_ai.intents import Intent, IntentRegistry
+from mim_ai.normalizer.schema import NormalizerConfig
 
 
 @pytest.fixture
@@ -59,3 +62,40 @@ def test_registry_supports_custom_module_registration(registry):
     assert intent is not None
     assert intent.name == "handoff_human"
     assert score >= 0.0
+
+
+def test_chatbot_uses_intent_registry_when_enabled():
+    registry = IntentRegistry()
+    registry.add_intent(
+        name="get_weather",
+        description="Get the weather.",
+        examples=["كيفاش الجو ف الدار البيضاء", "what is the weather in casablanca"],
+        tool="get_weather",
+    )
+
+    class FakeProvider:
+        def chat(self, messages, tools=None):
+            return type(
+                "Resp",
+                (),
+                {"content": "الجو حار", "tool_calls": [], "usage": {}}
+            )()
+
+    bot = Chatbot(
+        ChatbotConfig(enabled=True, use_intents=True, enable_tools=False),
+        provider=FakeProvider(),
+        intents=registry,
+    )
+
+    reply = bot.chat("كيفاش الجو ف الدار البيضاء", session_id="s1")
+
+    assert reply.intent == "get_weather"
+    assert reply.intent_score >= 0.0
+
+
+def test_normalizer_respects_disabled_flag():
+    cfg = NormalizerConfig(enabled=False)
+    norm = cfg
+
+    assert norm.enabled is False
+    assert isinstance(cfg, NormalizerConfig)

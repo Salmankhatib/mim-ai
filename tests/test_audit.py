@@ -3,6 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from mim_ai import MimConfig, load_config
 from mim_ai.voice.pipeline import VoicePipeline
@@ -164,6 +165,49 @@ def test_config_yaml_takes_priority_over_legacy_alias(tmp_path, monkeypatch):
     cfg = load_config()
 
     assert cfg.chatbot.enabled is False
+
+
+def test_mim_config_ignores_unknown_keys(tmp_path):
+    cfg = MimConfig.from_dict({
+        "audit": {"enabled": True, "backend": "sqlite", "db_path": str(tmp_path / "audit.db"), "unknown_flag": True},
+        "logs": {"enabled": True, "backend": "sqlite", "db_path": str(tmp_path / "logs.db"), "unknown_log_flag": True},
+        "intents": {"enabled": True, "strategy": "hybrid", "unused_field": "x"},
+    })
+
+    assert cfg.audit.enabled is True
+    assert cfg.logs.enabled is True
+    assert cfg.intents.strategy == "hybrid"
+    assert cfg.intents.enabled is True
+
+
+def test_audit_hash_chain_persists_across_restarts(tmp_path):
+    db_path = tmp_path / "chain.db"
+    cfg = AuditConfig(enabled=True, backend="sqlite", db_path=str(db_path), hash_chain=True)
+
+    logger1 = AuditLogger(cfg)
+    logger1.emit(event="login", trace_id="t-1", user_ref="u_1", input_text="hello")
+    logger1.emit(event="login", trace_id="t-2", user_ref="u_1", input_text="hello again")
+
+    logger2 = AuditLogger(cfg)
+    logger2.emit(event="login", trace_id="t-3", user_ref="u_1", input_text="third")
+
+    rows = logger2.find_by_user("u_1")
+    assert len(rows) >= 3
+    assert rows[1]["prev_hash"] == rows[0]["line_hash"]
+    assert rows[2]["prev_hash"] == rows[1]["line_hash"]
+
+
+def test_chatbot_warns_when_logger_auto_wiring_fails(monkeypatch):
+    import mim_ai.audit as audit_module
+    from mim_ai.chatbot.chatbot import Chatbot
+    from mim_ai.chatbot.config import ChatbotConfig
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("logger init failed")
+
+    monkeypatch.setattr(audit_module, "AuditLogger", boom, raising=False)
+    with pytest.warns(UserWarning, match="audit"):
+        Chatbot.from_config(ChatbotConfig(enabled=True, use_audit_log=True))
 
 
 def test_voice_pipeline_uses_configured_normalizer_and_audit(monkeypatch):

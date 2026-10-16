@@ -33,14 +33,17 @@ class TTSError(RuntimeError):
 def _decode_audio(data: bytes, mime: str, fmt: str) -> tuple[np.ndarray, int]:
     """Decode WAV to float32 mono. Non-WAV formats need soundfile (optional)."""
     if fmt == "wav":
-        with wave.open(io.BytesIO(data), "rb") as w:
-            n = w.getnframes()
-            sr = w.getframerate()
-            raw = w.readframes(n)
-            arr = np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32768.0
-            if w.getnchannels() > 1:
-                arr = arr.reshape(-1, w.getnchannels()).mean(axis=1)
-            return arr, sr
+        try:
+            with wave.open(io.BytesIO(data), "rb") as w:
+                n = w.getnframes()
+                sr = w.getframerate()
+                raw = w.readframes(n)
+                arr = np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32768.0
+                if w.getnchannels() > 1:
+                    arr = arr.reshape(-1, w.getnchannels()).mean(axis=1)
+                return arr, sr
+        except wave.Error as exc:
+            raise TTSError(f"Failed to decode WAV audio response: {exc}") from exc
 
     # mp3 / opus -> soundfile (optional dependency)
     try:

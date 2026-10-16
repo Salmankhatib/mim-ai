@@ -38,16 +38,20 @@ class ArabiziDictionary:
         skip_set = {str(k).lower() for k in skip_data.keys()} if isinstance(skip_data, dict) else set()
 
         if config.arabizi_dict_path:
-            override = load_yaml(Path(config.arabizi_dict_path))
-            if isinstance(override, dict):
-                table = merge_dicts(table, override)
+            override_path = Path(config.arabizi_dict_path)
+            if override_path.exists():
+                override = load_yaml(override_path)
+                if isinstance(override, dict):
+                    table = merge_dicts(table, override)
 
         if config.skip_words_path:
-            custom_skip = load_yaml(Path(config.skip_words_path))
-            if isinstance(custom_skip, dict):
-                skip_set |= {str(k).lower() for k in custom_skip.keys()}
-            elif isinstance(custom_skip, list):
-                skip_set |= {str(v).lower() for v in custom_skip}
+            skip_path = Path(config.skip_words_path)
+            if skip_path.exists():
+                custom_skip = load_yaml(skip_path)
+                if isinstance(custom_skip, dict):
+                    skip_set |= {str(k).lower() for k in custom_skip.keys()}
+                elif isinstance(custom_skip, list):
+                    skip_set |= {str(v).lower() for v in custom_skip}
 
         obj = cls()
         obj._table = {obj.normalize_key(k): str(v) for k, v in table.items()}

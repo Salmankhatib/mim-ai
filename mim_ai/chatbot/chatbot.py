@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import time
 import uuid
+import warnings
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -80,6 +81,8 @@ class ChatReply:
     trace_id:     str = ""
     duration_ms:  int = 0
     usage:        dict = field(default_factory=dict)
+    intent:       str | None = None
+    intent_score: float = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +102,7 @@ class Chatbot:
         normalizer=None,          # mim_ai.normalizer.Normalizer, optional
         audit=None,               # mim_ai.audit.AuditLogger, optional
         normalizer_log=None,      # mim_ai.audit.NormalizerLogger, optional
+        intents=None,
     ) -> None:
         self.config = config
         self.enabled = config.enabled
@@ -109,6 +113,8 @@ class Chatbot:
         self.normalizer = normalizer
         self.audit = audit
         self.normalizer_log = normalizer_log
+        self.intents = intents
+        self.intent_threshold = getattr(config, "intent_threshold", 0.55)
         self.system_prompt = resolve_prompt(
             config.system_prompt,
             config.system_prompt_extra,
@@ -119,38 +125,50 @@ class Chatbot:
     @classmethod
     def from_config(cls, config: ChatbotConfig, **kwargs) -> "Chatbot":
         """
-        Build a Chatbot, wiring up the normalizer and loggers
+        Build a Chatbot, wiring up the normalizer, intents, and loggers
         automatically when the corresponding flags are on.
 
         Optional kwargs:
-            normalizer, audit, normalizer_log, provider, registry, history
+            normalizer, audit, normalizer_log, provider, registry, history, intents
         Any explicit kwarg overrides auto-wiring.
         """
         if not config.enabled:
-            return cls(config)
+            return cls(config, **kwargs)
 
         # Auto-wire the normalizer if requested and not supplied.
         if config.use_normalizer and kwargs.get("normalizer") is None:
             try:
                 from mim_ai.normalizer import Normalizer, NormalizerConfig
                 kwargs["normalizer"] = Normalizer.from_config(NormalizerConfig())
-            except Exception:            # noqa: BLE001
-                pass
+            except Exception as exc:            # noqa: BLE001
+                warnings.warn(f"Failed to initialize chatbot normalizer: {exc}", UserWarning)
+
+        # Auto-wire intents if requested and not supplied.
+        if config.use_intents and kwargs.get("intents") is None:
+            try:
+                from mim_ai.intents import IntentRegistry
+                registry = IntentRegistry()
+                intent_path = getattr(config, "intent_path", None)
+                if intent_path:
+                    registry.load_yaml(intent_path)
+                kwargs["intents"] = registry
+            except Exception as exc:            # noqa: BLE001
+                warnings.warn(f"Failed to initialize chatbot intents: {exc}", UserWarning)
 
         # Auto-wire loggers if requested and not supplied.
         if config.use_audit_log and kwargs.get("audit") is None:
             try:
                 from mim_ai.audit import AuditLogger, AuditConfig
                 kwargs["audit"] = AuditLogger(AuditConfig(enabled=True))
-            except Exception:            # noqa: BLE001
-                pass
+            except Exception as exc:            # noqa: BLE001
+                warnings.warn(f"Failed to initialize audit logger: {exc}", UserWarning)
 
         if config.use_normalizer_log and kwargs.get("normalizer_log") is None:
             try:
                 from mim_ai.audit import NormalizerLogger, NormalizerLogConfig
                 kwargs["normalizer_log"] = NormalizerLogger(NormalizerLogConfig(enabled=True))
-            except Exception:            # noqa: BLE001
-                pass
+            except Exception as exc:            # noqa: BLE001
+                warnings.warn(f"Failed to initialize normalizer logger: {exc}", UserWarning)
 
         return cls(config, **kwargs)
 
@@ -194,10 +212,18 @@ class Chatbot:
                     rules_applied=getattr(norm_report, "rule_applications", 0),
                 )
 
-        # --- 2. Build the message list -------------------------------
+        # --- 2. Match the intent when enabled ------------------------
+        intent_name = None
+        intent_score = 0.0
+        if self.config.use_intents and self.intents is not None:
+            match, score = self.intents.match_rule_based(user_text, threshold=self.intent_threshold)
+            if match is not None:
+                intent_name, intent_score = match.name, float(score)
+
+        # --- 3. Build the message list -------------------------------
         messages = self._build_messages(session_id, user_text)
 
-        # --- 3. Tool-use loop ----------------------------------------
+        # --- 4. Tool-use loop ----------------------------------------
         tool_calls_made: list[dict] = []
         final_text = ""
         usage: dict = {}
@@ -237,7 +263,7 @@ class Chatbot:
         except LLMError as e:
             final_text = f"(LLM error: {e})"
 
-        # --- 4. Persist history --------------------------------------
+        # --- 5. Persist history --------------------------------------
         self.history.append(session_id, {"role": "user",      "content": user_text})
         if final_text:
             self.history.append(session_id, {"role": "assistant", "content": final_text})
@@ -257,6 +283,8 @@ class Chatbot:
                 extra={
                     "session_id":  session_id,
                     "model":       self.config.llm_model,
+                    "intent":      intent_name,
+                    "intent_score": intent_score,
                     "tool_calls":  [t["name"] for t in tool_calls_made],
                     "usage":       usage,
                 },
@@ -268,6 +296,8 @@ class Chatbot:
             trace_id=trace_id,
             duration_ms=duration_ms,
             usage=usage,
+            intent=intent_name,
+            intent_score=intent_score,
         )
 
     # -----------------------------------------------------------------

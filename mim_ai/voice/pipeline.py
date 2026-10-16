@@ -106,8 +106,8 @@ class VoicePipeline:
         if self.chatbot:
             r = self.chatbot.chat(transcript, session_id=session_id, user_ref=user_ref)
             reply_text, tools = r.text, r.tool_calls
-            if r.intent:
-                intent_name, intent_score = r.intent, r.intent_score
+            if getattr(r, "intent", None):
+                intent_name, intent_score = r.intent, getattr(r, "intent_score", 0.0)
         if not reply_text:
             reply_text = "سمح ليا، ما فهمتش."
 

@@ -11,7 +11,7 @@ no hashing, no DB connection, no overhead.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 
 @dataclass
@@ -45,6 +45,16 @@ class AuditConfig:
     hash_chain:      bool = True
     app_version:     str  = "mim-ai 0.1.0"
     purge_on_start:  bool = True              # run retention purge at startup
+
+    @classmethod
+    def from_mapping(cls, data: dict[str, Any] | None) -> "AuditConfig":
+        raw = dict(data or {})
+        known = {
+            "enabled", "backend", "db_path", "jsonl_path", "database_url",
+            "collection", "adapter", "retention_days", "hash_chain",
+            "app_version", "purge_on_start",
+        }
+        return cls(**{key: value for key, value in raw.items() if key in known})
 
 
 @dataclass
@@ -85,3 +95,14 @@ class NormalizerLogConfig:
     sample_rate:             float = 1.0    # 1.0 = every event, 0.1 = 1 in 10
 
     purge_on_start:          bool  = True
+
+    @classmethod
+    def from_mapping(cls, data: dict[str, Any] | None) -> "NormalizerLogConfig":
+        raw = dict(data or {})
+        known = {
+            "enabled", "backend", "db_path", "jsonl_path", "database_url",
+            "collection", "adapter", "retention_days", "capture_jargon_used",
+            "capture_jargon_skipped", "capture_skipped_tokens", "max_tokens_per_event",
+            "sample_rate", "purge_on_start",
+        }
+        return cls(**{key: value for key, value in raw.items() if key in known})

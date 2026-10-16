@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Any
 
 from .config import AnonymizerConfig, load_config
@@ -32,8 +34,26 @@ def _resolve_config(config: Mapping[str, Any] | dict[str, Any] | AnonymizerConfi
         return AnonymizerConfig()
 
 
-def _build_analyzer(config: AnonymizerConfig):
+def _config_cache_key(config: AnonymizerConfig) -> str:
+    payload = {
+        "enabled": bool(getattr(config, "enabled", True)),
+        "language": str(getattr(config, "language", "en")),
+        "default_operators": getattr(config, "default_operators", {}),
+        "custom_patterns": getattr(config, "custom_patterns", []),
+    }
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+@lru_cache(maxsize=16)
+def _build_analyzer_cached(cache_key: str):
     from presidio_analyzer import AnalyzerEngine
+
+    payload = json.loads(cache_key)
+    config = AnonymizerConfig(
+        enabled=bool(payload.get("enabled", True)),
+        default_operators=dict(payload.get("default_operators", {})),
+        custom_patterns=list(payload.get("custom_patterns", [])),
+    )
 
     analyzer = AnalyzerEngine()
     analyzer.registry.add_recognizer(CINRecognizer())
@@ -43,6 +63,27 @@ def _build_analyzer(config: AnonymizerConfig):
         analyzer.registry.add_recognizer(recognizer)
 
     return analyzer
+
+
+@lru_cache(maxsize=8)
+def _build_anonymizer_cached(language: str):
+    try:
+        from presidio_anonymizer import AnonymizerEngine
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        raise RuntimeError(
+            "Presidio anonymizer is not installed. Install the package with: pip install presidio-analyzer presidio-anonymizer"
+        ) from exc
+    return AnonymizerEngine()
+
+
+def _build_analyzer(config: AnonymizerConfig):
+    try:
+        import presidio_analyzer  # noqa: F401
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        raise RuntimeError(
+            "Presidio analyzer is not installed. Install the package with: pip install presidio-analyzer presidio-anonymizer"
+        ) from exc
+    return _build_analyzer_cached(_config_cache_key(config))
 
 
 def anonymize(
@@ -63,9 +104,7 @@ def anonymize(
     results = analyzer.analyze(text=str(text), language="en")
     operators = build_operators(cfg)
 
-    from presidio_anonymizer import AnonymizerEngine
-
-    anonymizer_engine = AnonymizerEngine()
+    anonymizer_engine = _build_anonymizer_cached(str(getattr(cfg, "language", "en")))
     anonymized = anonymizer_engine.anonymize(
         text=str(text),
         analyzer_results=results,

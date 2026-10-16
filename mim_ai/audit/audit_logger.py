@@ -18,6 +18,8 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
+import warnings
+
 from .backends import SQLiteBackend, create_backend
 from .config import AuditConfig
 
@@ -31,10 +33,40 @@ class AuditLogger:
         if not self.enabled:
             return
 
-        self._backend = create_backend(config, getattr(config, "collection", "audit_events"))
+        try:
+            self._backend = create_backend(config, getattr(config, "collection", "audit_events"))
+        except Exception as exc:  # pragma: no cover - storage config dependent
+            warnings.warn(f"Failed to initialize audit backend: {exc}", UserWarning)
+            self.enabled = False
+            self._backend = None
+            return
+
+        self._last_hash = self._restore_last_hash()
 
         if config.purge_on_start:
             self._backend.purge_older_than(config.retention_days)
+
+    def _restore_last_hash(self) -> str | None:
+        backend = getattr(self, "_backend", None)
+        if backend is None or not self.config.hash_chain:
+            return None
+        try:
+            if hasattr(backend, "conn") and hasattr(backend, "table"):
+                row = backend.conn.execute(
+                    f"SELECT line_hash FROM {backend.table} ORDER BY seq DESC LIMIT 1"
+                ).fetchone()
+                if row:
+                    return row[0]
+            if hasattr(backend, "_fallback_path") and backend._fallback_path.exists():
+                with backend._fallback_path.open("r", encoding="utf-8") as fh:
+                    for line in fh:
+                        if line.strip():
+                            payload = json.loads(line)
+                            last_line_hash = payload.get("line_hash")
+                return last_line_hash
+        except Exception:  # pragma: no cover - backend-specific
+            return None
+        return None
 
     # -----------------------------------------------------------------
     # Public API

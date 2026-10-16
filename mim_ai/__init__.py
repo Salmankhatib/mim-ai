@@ -37,6 +37,15 @@ def __getattr__(name: str):
     if name == "AnonymizationResult":
         from .anonymizer import AnonymizationResult
         return AnonymizationResult
+    if name == "VoicePipeline":
+        from .voice import VoicePipeline
+        return VoicePipeline
+    if name == "VoiceReply":
+        from .voice import VoiceReply
+        return VoiceReply
+    if name == "_http":
+        import importlib
+        return importlib.import_module("._http", __name__)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -107,6 +116,7 @@ class Mim:
                 normalizer=self.normalizer,
                 audit=self.audit,
                 normalizer_log=self.normalizer_log,
+                intents=self.intents,
             )
         return self._chatbot
 

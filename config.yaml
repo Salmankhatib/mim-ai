@@ -16,8 +16,8 @@ normalizer:
     unify_ta_marbuta: false
     remove_diacritics: true
     normalize_digits: true
-    arabizi_dict_path: ./darija/arabizi.yaml
-    skip_words_path: ./darija/skip_words.yaml
+    arabizi_dict_path: ""
+    skip_words_path: ""
     arabic_rules_path: ./mim_ai/normalizer/data/arabic_rules.yaml
   llm:
     enabled: false
@@ -106,7 +106,7 @@ tts:
 intents:
   enabled: true
   strategy: hybrid
-  intents_path: ./intents.yaml
+  intents_path: ""
   threshold: 0.55
 
 audit:

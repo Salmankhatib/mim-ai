@@ -147,11 +147,11 @@ class MimConfig:
 
         audit_cfg = data.get("audit", {})
         if isinstance(audit_cfg, dict):
-            cfg.audit = AuditConfig(**audit_cfg)
+            cfg.audit = AuditConfig.from_mapping(audit_cfg)
 
         logs_cfg = data.get("logs") or data.get("normalizer_log") or {}
         if isinstance(logs_cfg, dict):
-            cfg.logs = NormalizerLogConfig(**logs_cfg)
+            cfg.logs = NormalizerLogConfig.from_mapping(logs_cfg)
 
         chatbot_cfg = data.get("chatbot", {})
         if isinstance(chatbot_cfg, dict):
@@ -178,7 +178,7 @@ class MimConfig:
 
         intents_cfg = data.get("intents", {})
         if isinstance(intents_cfg, dict):
-            cfg.intents = IntentConfig(**intents_cfg)
+            cfg.intents = IntentConfig.from_mapping(intents_cfg)
 
         voice_cfg = data.get("voice", {})
         if isinstance(voice_cfg, dict):

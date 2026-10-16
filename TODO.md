@@ -17,6 +17,7 @@ C3. Normalizer Layer 3 crashes when opted in
 README: "Layer 3 — LLM Refinement: Optional, off by default (opt-in for polishing leftovers)."
 mim_ai/normalizer/layers/llm.py::LLMLayer.apply is raise NotImplementedError. Setting normalizer.llm.enabled: true makes normalize() crash. The trigger modes (on_oov, on_mixed) are dead config — the orchestrator runs all layers unconditionally, then the trigger check does nothing (pass). Worse, Normalizer.normalize() ends with:
 Python
+
 text = context.get("layer2_output", text)
 which would discard the LLM layer's output and revert to Layer 2 output even if the layer were implemented. The whole Layer-3 path is broken three separate ways.
 C4. Fresh-install quick-start breaks (relative paths in shipped default config)

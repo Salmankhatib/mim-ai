@@ -132,13 +132,14 @@ class Normalizer:
     def __init__(self, config: NormalizerConfig | None = None) -> None:
         self.config = config or NormalizerConfig()
         self._layers: list[BaseLayer] = []
+        if self.config.enabled:
+            self._layers = [CleaningLayer(self.config.cleaning), RulesLayer(self.config.rules)]
+            if self.config.llm.enabled:
+                self._layers.append(LLMLayer(self.config.llm))
 
     @classmethod
     def from_config(cls, config: NormalizerConfig) -> "Normalizer":
         obj = cls(config)
-        obj._layers = [CleaningLayer(config.cleaning), RulesLayer(config.rules)]
-        if config.llm.enabled:
-            obj._layers.append(LLMLayer(config.llm))
         return obj
 
     def normalize(
@@ -148,6 +149,8 @@ class Normalizer:
         return_report: bool = False,
     ) -> str | tuple[str, NormalizationReport]:
         """Run the pipeline."""
+        if not self.config.enabled:
+            return (text, NormalizationReport()) if return_report else text
         if text is None:
             text = ""
         report = NormalizationReport()

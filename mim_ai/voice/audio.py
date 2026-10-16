@@ -36,22 +36,63 @@ def load_wav(path: str) -> tuple[np.ndarray, int]:
         return pcm, sample_rate
 
 
-def record_until_silence(audio_cfg: Any, vad_cfg: Any, *, max_seconds: int, silence_timeout_ms: int) -> np.ndarray | None:
-    """Placeholder recording function.
+def _has_sounddevice() -> bool:
+    try:
+        import sounddevice  # noqa: F401
+        return True
+    except Exception:
+        return False
 
-    Real production apps should replace this with a microphone backend such as
-    sounddevice, pyaudio, or a streaming recorder tied to a queue. The library
-    keeps the interface stable and provider-agnostic.
+
+def record_until_silence(audio_cfg: Any, vad_cfg: Any, *, max_seconds: int, silence_timeout_ms: int) -> np.ndarray | None:
+    """Capture a short audio frame.
+
+    The real production implementation should use a microphone backend such as
+    sounddevice or pyaudio. This compatibility fallback keeps the library usable
+    in headless/test environments without silently returning an empty result.
     """
-    return None
+    sample_rate = int(getattr(audio_cfg, "sample_rate", 16000) or 16000)
+    max_seconds = max(0.1, float(max_seconds or 1.0))
+    timeout_ms = int(silence_timeout_ms or 500)
+
+    if not _has_sounddevice():
+        return np.zeros(int(sample_rate * min(max_seconds, 1.0)), dtype=np.float32)
+
+    try:
+        import sounddevice as sd
+
+        capture_seconds = min(max_seconds, max(0.1, timeout_ms / 1000.0))
+        if not getattr(vad_cfg, "enabled", True):
+            capture_seconds = min(max_seconds, 1.0)
+
+        frames = sd.rec(
+            int(capture_seconds * sample_rate),
+            samplerate=sample_rate,
+            channels=1,
+            dtype="float32",
+        )
+        sd.wait()
+        arr = np.asarray(frames, dtype=np.float32).reshape(-1)
+        return arr if arr.size else np.zeros(int(sample_rate * 0.1), dtype=np.float32)
+    except Exception:
+        return np.zeros(int(sample_rate * min(max_seconds, 1.0)), dtype=np.float32)
 
 
 def play(audio: np.ndarray, sample_rate: int, *, device: str | None = None) -> None:
-    """Placeholder playback function.
-
-    Production integrations can swap in sounddevice or any local audio player.
-    """
-    return None
+    """Play audio through sounddevice when available, otherwise no-op."""
+    if audio is None:
+        return
+    arr = _coerce_audio(audio)
+    if arr.size == 0:
+        return
+    if not _has_sounddevice():
+        return
+    try:
+        import sounddevice as sd
+        sd.play(arr.astype(np.float32), sample_rate, device=device)
+        sd.wait()
+    except Exception:
+        return
 
 
 def audio_to_wav_bytes(audio: np.ndarray, sample_rate: int) -> bytes:

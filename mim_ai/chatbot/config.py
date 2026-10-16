@@ -28,6 +28,8 @@ class ChatbotConfig:
 
     # --- Production options --------------------------------------------
     use_intents:          bool = True
+    intent_threshold:     float = 0.55
+    intent_path:          str | None = None
 
     # --- LLM (agnostic — any OpenAI-compatible endpoint works) ---------
     llm_provider:         str  = "openai"
@@ -71,8 +73,9 @@ class ChatbotConfig:
 
         known = {
             "enabled", "system_prompt", "system_prompt_file", "system_prompt_extra",
-            "language", "use_intents", "llm_provider", "llm_model", "llm_endpoint",
-            "llm_api_key_env", "llm_temperature", "llm_max_tokens", "llm_timeout_ms",
+            "language", "use_intents", "intent_threshold", "intent_path",
+            "llm_provider", "llm_model", "llm_endpoint", "llm_api_key_env",
+            "llm_temperature", "llm_max_tokens", "llm_timeout_ms",
             "llm_extra_headers", "llm_extra_params", "use_normalizer", "use_audit_log",
             "use_normalizer_log", "enable_tools", "max_tool_calls", "max_history_turns",
             "session_ttl_seconds", "history_backend", "history_dsn", "params", "roles",

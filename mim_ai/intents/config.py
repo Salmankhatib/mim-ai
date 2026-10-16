@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -28,3 +29,9 @@ class IntentConfig:
     strategy:     str   = "hybrid"     # rule | llm | hybrid
     intents_path: str   = ""
     threshold:    float = 0.55
+
+    @classmethod
+    def from_mapping(cls, data: dict[str, Any] | None) -> "IntentConfig":
+        raw = dict(data or {})
+        known = {"enabled", "strategy", "intents_path", "threshold"}
+        return cls(**{key: value for key, value in raw.items() if key in known})

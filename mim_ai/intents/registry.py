@@ -86,7 +86,11 @@ class IntentRegistry:
 
     def load_yaml(self, path: str | Path) -> int:
         """Load intents from a YAML file. Returns count loaded."""
-        data = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
+        file_path = Path(path)
+        if not file_path.exists():
+            return 0
+
+        data = yaml.safe_load(file_path.read_text(encoding="utf-8")) or {}
         count = 0
         for raw in data.get("intents", []):
             self.register(Intent(
