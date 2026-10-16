@@ -5,25 +5,33 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mim-ai"
 version = "0.1.0"
-description = "A configuration-based library offering ready-to-use AI modules tailored to Morocco."
+description = "A configuration-first Python SDK for building production-grade Moroccan Darija AI applications — normalizer, anonymizer, chatbot, voice pipeline, and Law 09-08 audit trail."
 
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
 authors = [
-    { name = "khatib salman", email = "slamankhatib06@gmail.com" },
+    { name = "Salman KHATIB", email = "slamankhatib06@gmail.com" },
 ]
-keywords = ["nlp", "darija", "arabic", "chatbot", "voice-agent"]
+keywords = [
+    "nlp", "darija", "arabic", "moroccan", "chatbot",
+    "voice-agent", "stt", "tts", "anonymizer", "audit",
+    "law-09-08", "iso-42001", "arabizi", "mistral", "mntra"
+]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: Arabic",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Linguistic",
 ]
 
 # Core dependencies
@@ -35,6 +43,13 @@ dependencies = [
     "presidio-analyzer>=2.2.0",
     "presidio-anonymizer>=2.2.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/salmankhatib06/mim-ai"
+Repository = "https://github.com/salmankhatib06/mim-ai"
+Documentation = "https://github.com/salmankhatib06/mim-ai/tree/main/docs/EN"
+"Bug Tracker" = "https://github.com/salmankhatib06/mim-ai/issues"
+Changelog = "https://github.com/salmankhatib06/mim-ai/blob/main/CHANGELOG.md"
 
 [project.scripts]
 mim-init = "mim_ai.config:write_default_config"
