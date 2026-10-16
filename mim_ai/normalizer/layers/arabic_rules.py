@@ -11,8 +11,7 @@ Design principles
   (and does not need to — both benefit from the same unification).
 
 * Rules are **idempotent**. Running the normalizer twice on the same
-  text must produce the same output as running it once. This matters
-  because Layer 3 (LLM) may round-trip through Layer 2 again.
+  text must produce the same output as running it once.
 
 * Rules are **character-level substitutions or regex rewrites**, never
   contextual decisions. Contextual logic belongs in `darija_rules.py`.

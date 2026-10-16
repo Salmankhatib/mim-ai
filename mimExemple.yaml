@@ -10,16 +10,6 @@ normalizer:
   arabizi_dict_path: ""
   skip_words_path: ""
 
-llm:
-  enabled: true
-  base_url: https://api.mntra.ma/v1
-  api_key_env: MNTRA_API_KEY
-  model: mntra/mistral-darija
-  temperature: 0.7
-  max_tokens: 1024
-  timeout_ms: 30000
-  extra: {}                         # anything else passed verbatim
-
 stt:
   enabled: true
   base_url: https://api.groq.com/openai/v1

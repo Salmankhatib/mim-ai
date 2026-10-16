@@ -2,8 +2,7 @@
 Abstract base for normalizer layers.
 
 Contract: `apply(text, context) -> (new_text, report_delta)`.
-`context` carries the pipeline config plus any state that later
-layers might need (e.g. `layer2_output` for LLM fallback).
+`context` carries pipeline state that later layers may need.
 """
 
 from __future__ import annotations

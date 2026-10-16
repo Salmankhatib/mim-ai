@@ -10,11 +10,10 @@ Un modèle donne de meilleurs résultats quand l’entrée est contrôlée. Plus
 
 ## Comment ça fonctionne
 
-Le normalizer est un pipeline en trois couches :
+Le normalizer est un pipeline en deux couches :
 
 1. couche de nettoyage
 2. couche Darija par règles
-3. couche optionnelle de raffinement LLM
 
 ## Exemple
 
@@ -33,7 +32,6 @@ Dans la config, le normalizer peut être paramétré via :
 - `normalizer.enabled`
 - `normalizer.cleaning`
 - `normalizer.rules`
-- `normalizer.llm`
 
 ## Bénéfices
 

@@ -18,13 +18,12 @@ This release covers the full pipeline: text normalization → PII anonymization 
 ### Added
 
 #### 🧹 Normalizer
-- Three-layer Darija text normalization pipeline (cleaning → rule-based → optional LLM)
+- Two-layer Darija text normalization pipeline (cleaning → rule-based)
 - Arabizi dictionary lookup (whole-word, not character-level transliteration)
 - Arabic-script rules: Alef/Ya unification, tashkeel removal, Arabic-Indic digit normalization
 - URL, @mention, and #hashtag preservation with config toggles
 - `NormalizationReport` diagnostics: OOV flags, dictionary hits, jargon tracking
 - **Under 5 ms** on modern CPU — zero model inference by default
-- Optional Layer 3: LLM refinement (on_oov / on_mixed / always trigger modes)
 - Built-in support for MNTRA/Mistral Darija endpoint
 
 #### 🛡️ Anonymizer

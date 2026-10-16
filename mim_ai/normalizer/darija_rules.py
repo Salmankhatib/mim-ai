@@ -12,8 +12,6 @@ Position in the pipeline
         ↓  cleaned text, URLs replaced with <URL_N> placeholders
     Layer 2 (THIS FILE, via layers/rules.py)
         ↓  normalized text, OOV flag emitted
-    Layer 3 (layers/llm.py)   — optional
-        ↓  LLM-normalized text
     Normalizer.normalize() restores URLs and returns.
 
 This module contains NO character-level tables (they live in
@@ -42,9 +40,9 @@ route it through exactly one branch:
     script == "other"   (digits, punctuation, emoji, symbols)
         -> leave untouched
 
-The `oov_arabizi` flag is the hand-off to Layer 3: it means "there
-was Latin-script text I could not resolve as either French/English
-or known Arabizi." The LLM layer uses this as its default trigger.
+The `oov_arabizi` flag marks Latin-script text that could not be
+resolved as either French/English or known Arabizi during the
+rule-based pass.
 
 Report contract
 ---------------
@@ -259,8 +257,7 @@ def _normalize_token(
 
         # OOV: a Latin token that is neither a skip-word nor a known
         # Arabizi form. It might be French, English, a typo, or
-        # genuinely ambiguous Arabizi. We leave it alone and flag it
-        # so Layer 3 knows there is unresolved Latin-script content.
+        # genuinely ambiguous Arabizi. We leave it alone and flag it.
         report.oov_arabizi = True
         report.jargon_skipped[core] = report.jargon_skipped.get(core, 0) + 1
         return token

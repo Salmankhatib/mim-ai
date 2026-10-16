@@ -41,8 +41,8 @@ URL_RE = re.compile(
 )
 
 # Placeholder format: <URL_N>. Only ASCII, no dots, no underscores beyond
-# the fixed prefix — safe against every rule in Layer 2 and against most
-# LLM paraphrasing (bracketed tokens are usually preserved verbatim).
+# the fixed prefix — safe against every rule in Layer 2 and preserved
+# verbatim by the output restoration step.
 _PLACEHOLDER_RE = re.compile(r"<URL_(\d+)>")
 
 
@@ -72,7 +72,7 @@ class CleaningLayer(BaseLayer):
         text = re.sub(r"[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]", "", text)
 
         # 4. Other control characters. \n is kept so paragraph structure
-        #    survives for the LLM layer.
+        #    survives the normalizer pipeline.
         text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
 
         # 5. Tatweel / kashida. Decorative only; inflates token length
@@ -90,7 +90,7 @@ class CleaningLayer(BaseLayer):
         text = text.strip()
 
         # Hand the URL map to the orchestrator so it can restore at the
-        # very end of the pipeline (after Layer 3, not before).
+        # very end of the pipeline.
         context["url_map"] = url_map
         return text, {"urls_protected": len(url_map)}
 
@@ -118,10 +118,8 @@ def restore_urls(text: str, url_map: dict[str, str]) -> str:
     """
     Put the original URLs back into the text.
 
-    Called by `Normalizer.normalize()` AFTER Layer 3 (LLM) has run, so
-    the model never sees the real URL. The LLM may still decide to drop
-    or paraphrase the placeholder — see the prompt template in
-    `layers/llm.py` for the instruction that prevents it.
+    Called by `Normalizer.normalize()` after the rule-based pass so the
+    original URL can be restored without leaking it back into the output.
     """
     if not url_map:
         return text

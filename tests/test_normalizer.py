@@ -249,12 +249,14 @@ class TestConfigAndWiring:
         assert cfg.audit.enabled is False
         assert cfg.logs.enabled is False
 
-    def test_normalizer_llm_layer_stays_off_by_default(self):
+    def test_normalizer_has_only_two_layers(self):
         from mim_ai import load_config
 
         cfg = load_config("config.yaml")
         assert cfg.normalizer.enabled is True
-        assert cfg.normalizer.llm.enabled is False
+        assert hasattr(cfg.normalizer, "cleaning")
+        assert hasattr(cfg.normalizer, "rules")
+        assert not hasattr(cfg.normalizer, "llm")
 
     def test_chatbot_history_and_llm_params_are_config_driven(self):
         from mim_ai.chatbot.config import ChatbotConfig

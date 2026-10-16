@@ -43,25 +43,11 @@ class RulesConfig:
 
 
 @dataclass
-class LLMConfig:
-    """Layer 3 — optional. Off by default."""
-    enabled: bool = False
-    trigger: str = "on_oov"                       # always | on_oov | on_mixed
-    model: str = "mntra/mistral-darija"
-    endpoint: str | None = None
-    api_key_env: str = "MNTRA_API_KEY"
-    timeout_ms: int = 800
-    max_tokens: int = 256
-    fallback_on_timeout: bool = True
-
-
-@dataclass
 class NormalizerConfig:
     """Top-level normalizer config, nested into mim_ai.config."""
     enabled: bool = True
     cleaning: CleaningConfig = field(default_factory=CleaningConfig)
     rules: RulesConfig = field(default_factory=RulesConfig)
-    llm: LLMConfig = field(default_factory=LLMConfig)
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any] | None) -> "NormalizerConfig":
@@ -107,17 +93,5 @@ class NormalizerConfig:
         ):
             if key in raw:
                 setattr(cfg.rules, key, raw[key])
-
-        llm_cfg = raw.get("llm") if isinstance(raw.get("llm"), dict) else {}
-        if llm_cfg:
-            for key, value in llm_cfg.items():
-                if hasattr(cfg.llm, key):
-                    setattr(cfg.llm, key, value)
-
-        # Only the nested llm block may toggle the optional LLM layer.
-        # A top-level `enabled` flag controls the normalizer itself.
-        for key in ("trigger", "model", "endpoint", "api_key_env", "timeout_ms", "max_tokens", "fallback_on_timeout"):
-            if key in raw and not llm_cfg:
-                setattr(cfg.llm, key, raw[key])
 
         return cfg

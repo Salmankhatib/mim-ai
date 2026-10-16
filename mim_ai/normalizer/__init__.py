@@ -20,7 +20,7 @@ Quick start
     # With diagnostics:
     clean, report = norm.normalize(text, return_report=True)
     if report.oov_arabizi:
-        ...   # hand off to Layer 3 (LLM)
+        ...
 
 Package layout
 --------------
@@ -37,7 +37,6 @@ Package layout
         base.py       BaseLayer ABC
         cleaning.py   Layer 1 — universal cleaning + URL protection
         rules.py      Layer 2 — wraps darija_rules.normalize_text
-        llm.py        Layer 3 — optional LLM normalizer
 """
 
 from .normalizer import Normalizer, NormalizationReport
@@ -45,7 +44,6 @@ from .schema import (
     NormalizerConfig,
     CleaningConfig,
     RulesConfig,
-    LLMConfig,
 )
 
 
@@ -68,5 +66,4 @@ __all__ = [
     "NormalizerConfig",
     "CleaningConfig",
     "RulesConfig",
-    "LLMConfig",
 ]

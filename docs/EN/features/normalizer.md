@@ -10,11 +10,10 @@ A model gets better results when the input is controlled. The cleaner the text, 
 
 ## How it works
 
-The normalizer is a three-layer pipeline:
+The normalizer is a two-layer pipeline:
 
 1. Cleaning layer
 2. Rule-based Darija layer
-3. Optional LLM refinement layer
 
 ## Example
 
@@ -33,7 +32,6 @@ In the config, the normalizer can be configured through:
 - `normalizer.enabled`
 - `normalizer.cleaning`
 - `normalizer.rules`
-- `normalizer.llm`
 
 ## Benefits
 

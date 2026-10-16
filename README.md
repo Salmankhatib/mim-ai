@@ -117,7 +117,6 @@ For a voice pipeline, that's the difference between a live conversation and a la
 | --- | --- | --- |
 | **1 — Universal Cleaning** | `~0 ms` | Whitespace, control characters, URL protection |
 | **2 — Rule-based Darija** | `< 5 ms` | Alef/Ya unification, Arabizi dictionary lookup *(Default)* |
-| **3 — LLM Refinement** | `200–800 ms` | Optional, off by default (opt-in for polishing leftovers) |
 
 > **Dictionary Customization:** The dictionary is yours to grow. Ship a base of common Darija, add your app's jargon in a side file. Every skipped token is logged so you can refine from real usage, not guesses.
 
