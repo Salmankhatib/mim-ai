@@ -25,6 +25,8 @@ text = "salam wa7ed 3la ekher, bghit n3ref kifach nt3amro app?"
 print(app.normalizer.normalize(text))
 ```
 
+La normalisation conserve le système d’écriture : les variantes Arabizi deviennent l’Arabizi canonique, tandis que les variantes arabes deviennent l’arabe canonique. Elle ne traduit pas d’un système à l’autre.
+
 ## Clés de config
 
 Dans la config, le normalizer peut être paramétré via :

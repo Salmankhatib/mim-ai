@@ -26,12 +26,9 @@ def _resolve_config(config: Mapping[str, Any] | dict[str, Any] | AnonymizerConfi
         return config
     if isinstance(config, Mapping):
         return load_config(dict(config))
-    try:
-        from mim_ai.config import load_config as load_main_config
+    from mim_ai.config import load_config as load_main_config
 
-        return load_main_config().anonymizer
-    except Exception:
-        return AnonymizerConfig()
+    return load_main_config().anonymizer
 
 
 def _config_cache_key(config: AnonymizerConfig) -> str:

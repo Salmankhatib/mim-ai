@@ -29,7 +29,9 @@ def _operator_for(name: str, *, default_value: str, params: dict[str, Any] | Non
     if op_name == "keep":
         return OperatorConfig("keep", {})
 
-    return OperatorConfig("replace", {"new_value": params.get("new_value", default_value)})
+    if op_name == "replace":
+        return OperatorConfig("replace", {"new_value": params.get("new_value", default_value)})
+    raise ValueError(f"Unsupported anonymizer operator: {name!r}")
 
 
 def build_operators(config: AnonymizerConfig) -> dict[str, OperatorConfig]:
@@ -42,7 +44,7 @@ def build_operators(config: AnonymizerConfig) -> dict[str, OperatorConfig]:
 
     for pattern in getattr(config, "custom_patterns", []) or []:
         if not isinstance(pattern, dict):
-            continue
+            raise TypeError("Each custom anonymizer pattern must be a mapping")
         entity_name = str(pattern.get("name") or pattern.get("entity") or "CUSTOM")
         operator_name = str(pattern.get("operator", "replace"))
         params = pattern.get("params") if isinstance(pattern.get("params"), dict) else {}

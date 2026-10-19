@@ -306,6 +306,11 @@ class Chatbot:
             intent_score=intent_score,
         )
 
+    def close(self) -> None:
+        close = getattr(self.history, "close", None)
+        if callable(close):
+            close()
+
     # -----------------------------------------------------------------
     def reset(self, session_id: str) -> None:
         """Clear conversation history for a session."""

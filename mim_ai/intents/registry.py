@@ -88,11 +88,18 @@ class IntentRegistry:
         """Load intents from a YAML file. Returns count loaded."""
         file_path = Path(path)
         if not file_path.exists():
-            return 0
+            raise FileNotFoundError(f"Intent config not found: {file_path}")
 
         data = yaml.safe_load(file_path.read_text(encoding="utf-8")) or {}
+        if not isinstance(data, dict):
+            raise TypeError(f"Intent config root must be a mapping: {file_path}")
+        raw_intents = data.get("intents", [])
+        if not isinstance(raw_intents, list):
+            raise TypeError(f"'intents' must be a list in {file_path}")
         count = 0
-        for raw in data.get("intents", []):
+        for raw in raw_intents:
+            if not isinstance(raw, dict):
+                raise TypeError(f"Each intent must be a mapping in {file_path}")
             self.register(Intent(
                 name=raw["name"],
                 description=raw["description"],

@@ -2,8 +2,8 @@
 Arabizi dictionary handling for Layer 2.
 
 Arabizi has no standard orthography, so we treat it as a whole-word
-dictionary problem, not a character transliteration problem. This
-module loads, merges, and queries the Arabizi dictionary.
+dictionary problem, not a character transliteration problem. Variants
+are canonicalized within their original script and never translated.
 """
 from __future__ import annotations
 
@@ -13,10 +13,11 @@ from pathlib import Path
 
 from .dictionary import load_yaml, merge_dicts
 from .schema import RulesConfig
+from ..utils.unicode_helpers import script_of
 
 
 class ArabiziDictionary:
-    """Whole-word Arabizi -> Arabic-script lookup."""
+    """Whole-word canonicalization that preserves the input script."""
 
     def __init__(self) -> None:
         self._table: dict[str, str] = {}
@@ -39,19 +40,20 @@ class ArabiziDictionary:
 
         if config.arabizi_dict_path:
             override_path = Path(config.arabizi_dict_path)
-            if override_path.exists():
-                override = load_yaml(override_path)
-                if isinstance(override, dict):
-                    table = merge_dicts(table, override)
+            override = load_yaml(override_path)
+            if not isinstance(override, dict):
+                raise TypeError(f"Arabizi dictionary must be a mapping: {override_path}")
+            table = merge_dicts(table, override)
 
         if config.skip_words_path:
             skip_path = Path(config.skip_words_path)
-            if skip_path.exists():
-                custom_skip = load_yaml(skip_path)
-                if isinstance(custom_skip, dict):
-                    skip_set |= {str(k).lower() for k in custom_skip.keys()}
-                elif isinstance(custom_skip, list):
-                    skip_set |= {str(v).lower() for v in custom_skip}
+            custom_skip = load_yaml(skip_path)
+            if isinstance(custom_skip, dict):
+                skip_set |= {str(k).lower() for k in custom_skip}
+            elif isinstance(custom_skip, list):
+                skip_set |= {str(v).lower() for v in custom_skip}
+            else:
+                raise TypeError(f"Skip-words file must be a mapping or list: {skip_path}")
 
         obj = cls()
         obj._table = {obj.normalize_key(k): str(v) for k, v in table.items()}
@@ -61,7 +63,6 @@ class ArabiziDictionary:
     @staticmethod
     def _variant_table_from_data(data: dict | list) -> dict[str, str]:
         entries: list[dict] = []
-        arabizi_to_arabic: dict[str, str] = {}
         if isinstance(data, list):
             entries = [item for item in data if isinstance(item, dict)]
         elif isinstance(data, dict):
@@ -69,11 +70,6 @@ class ArabiziDictionary:
                 entries = [item for item in data["entries"] if isinstance(item, dict)]
             elif "entries" not in data:
                 entries = [data]
-            if isinstance(data.get("arabizi_to_arabic"), dict):
-                arabizi_to_arabic = {
-                    str(key): str(value)
-                    for key, value in data["arabizi_to_arabic"].items()
-                }
 
         table: dict[str, str] = {}
         for entry in entries:
@@ -86,39 +82,39 @@ class ArabiziDictionary:
             if canonical_arabic is not None:
                 table[str(canonical_arabic)] = str(canonical_arabic)
 
-            for variant_group in variants.values():
+            for script, variant_group in variants.items():
+                if script == "arabizi":
+                    canonical = canonical_arabizi
+                elif script == "arabic":
+                    canonical = canonical_arabic
+                else:
+                    continue
+                if canonical is None:
+                    continue
                 if isinstance(variant_group, list):
                     for variant in variant_group:
                         if variant is None:
                             continue
-                        variant_text = str(variant)
-                        if any((0x0600 <= ord(ch) <= 0x06FF) or (0x0750 <= ord(ch) <= 0x077F) for ch in variant_text):
-                            table[variant_text] = str(canonical_arabic)
-                        else:
-                            table[variant_text] = str(canonical_arabizi) if canonical_arabizi is not None else str(canonical_arabic)
+                        table[str(variant)] = str(canonical)
                 elif variant_group is not None:
-                    variant_text = str(variant_group)
-                    if any((0x0600 <= ord(ch) <= 0x06FF) or (0x0750 <= ord(ch) <= 0x077F) for ch in variant_text):
-                        table[variant_text] = str(canonical_arabic)
-                    else:
-                        table[variant_text] = str(canonical_arabizi) if canonical_arabizi is not None else str(canonical_arabic)
+                    table[str(variant_group)] = str(canonical)
 
-        table.update(arabizi_to_arabic)
         return {ArabiziDictionary.normalize_key(k): str(v) for k, v in table.items() if k}
 
     def lookup(self, token: str) -> str | None:
-        """Return canonical Arabic form if the token resolves."""
+        """Return the same-script canonical form if the token resolves."""
         key = self.normalize_key(token)
         if not key:
             return None
-        starts_with_arabizi_digit = bool(re.match(r"^\d", str(token).strip()))
-        if self.is_skipped(key) and not starts_with_arabizi_digit:
+        if self.is_skipped(token):
             return None
-        return self._table.get(key)
+        canonical = self._table.get(key)
+        if canonical is not None and script_of(token) != script_of(canonical):
+            return None
+        return canonical
 
     def is_skipped(self, token: str) -> bool:
-        """True if the token is on the fr/en whitelist."""
-        # A numeric prefix marks Arabizi, even if removing it collides with a French word.
+        """Return whether the token should be excluded from dictionary lookup."""
         if re.match(r"^\d", str(token).strip()):
             return False
         return self.normalize_key(token) in self._skip

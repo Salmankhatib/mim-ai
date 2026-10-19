@@ -88,7 +88,7 @@ class NormalizerLogConfig:
     # --- What to capture ---
     capture_jargon_used:     bool  = True   # custom dict keys that matched
     capture_jargon_skipped:  bool  = True   # OOV Latin tokens (PII risk!)
-    capture_skipped_tokens:  bool  = True   # False -> counts only, no tokens
+    capture_skipped_tokens:  bool  = False  # True -> store raw OOV tokens
     max_tokens_per_event:    int   = 50     # hard cap per event
 
     # --- Sampling (reduce volume on high-traffic deployments) ---

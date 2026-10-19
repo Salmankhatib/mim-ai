@@ -185,7 +185,7 @@ def test_pipeline_reports_no_speech_without_calling_stt(monkeypatch):
 
     class NeverTranscribe:
         def __init__(self, config):
-            pass
+            self.config = config
 
         def transcribe(self, audio, sample_rate):
             pytest.fail("STT must not run when VAD detects no speech")
@@ -201,10 +201,11 @@ def test_pipeline_reports_no_speech_without_calling_stt(monkeypatch):
     assert result.trace_id
 
 
-def test_missing_override_paths_do_not_crash_arabizi_dictionary():
-    dict_obj = ArabiziDictionary.from_config(RulesConfig(arabizi_dict_path="./definitely_missing.yaml"))
-    assert isinstance(dict_obj, ArabiziDictionary)
-    assert dict_obj.lookup("salam") in (None, "سلام")
+def test_missing_dictionary_override_path_is_reported():
+    with pytest.raises(FileNotFoundError, match="YAML file does not exist"):
+        ArabiziDictionary.from_config(
+            RulesConfig(arabizi_dict_path="./definitely_missing.yaml")
+        )
 
 
 def test_default_and_custom_skip_lists_keep_darija_mappable():
@@ -216,11 +217,12 @@ def test_default_and_custom_skip_lists_keep_darija_mappable():
         )
     )
 
-    assert dict_obj.lookup("salam") == "سلام"
+    assert dict_obj.lookup("salam") == "salam"
     assert dict_obj.lookup("bghit") == "bghit"
-    assert dict_obj.lookup("3la") == "على"
+    assert dict_obj.lookup("3la") == "3la"
     assert dict_obj.lookup("la") is None
     assert dict_obj.is_skipped("bonjour")
+    assert dict_obj.lookup("سلم") == "سلام"
 
 
 def test_speak_sets_response_format_and_only_posts_once(monkeypatch):
@@ -294,3 +296,116 @@ def test_transcribe_uses_language_form_field_not_x_language_header(monkeypatch):
     assert "X-Language" not in captured["headers"]
     assert b'name="language"' in captured["body"]
     assert b"ar" in captured["body"]
+
+
+def test_http_helpers_send_bearer_api_key(monkeypatch):
+    from mim_ai._http import _headers
+
+    monkeypatch.setenv("MIM_TEST_API_KEY", "secret-test-key")
+    cfg = type("Cfg", (), {"api_key_env": "MIM_TEST_API_KEY"})()
+
+    assert _headers(cfg)["Authorization"] == "Bearer secret-test-key"
+
+
+def test_voice_pipeline_honors_component_flags(monkeypatch):
+    import mim_ai.voice.pipeline as pipeline_module
+    from mim_ai.config import STTConfig, TTSConfig, VoiceSection
+
+    monkeypatch.setattr(
+        pipeline_module, "record_until_silence",
+        lambda *args, **kwargs: np.ones(20, dtype=np.float32),
+    )
+
+    class FakeSTT:
+        def __init__(self, config):
+            self.config = config
+
+        def transcribe(self, audio, sample_rate):
+            return "salam"
+
+    class FakeTTS:
+        def __init__(self, config):
+            self.config = config
+
+        def synthesize(self, text):
+            pytest.fail("TTS must not run when disabled")
+
+    class NeverChat:
+        def chat(self, *args, **kwargs):
+            pytest.fail("chatbot must not run when voice.use_chatbot is false")
+
+    monkeypatch.setattr(pipeline_module, "STT", FakeSTT)
+    monkeypatch.setattr(pipeline_module, "TTS", FakeTTS)
+    pipeline = VoicePipeline(
+        VoiceSection(use_chatbot=False),
+        STTConfig(enabled=True),
+        TTSConfig(enabled=False),
+        chatbot=NeverChat(),
+    )
+
+    result = pipeline.listen_and_reply(play_audio=False)
+
+    assert result.transcript == "salam"
+    assert result.reply_text == ""
+    assert result.audio is None
+    assert result.status == "transcribed"
+
+
+def test_voice_pipeline_returns_text_without_tts_when_tts_disabled(monkeypatch):
+    import mim_ai.voice.pipeline as pipeline_module
+    from mim_ai.config import STTConfig, TTSConfig, VoiceSection
+
+    monkeypatch.setattr(
+        pipeline_module, "record_until_silence",
+        lambda *args, **kwargs: np.ones(20, dtype=np.float32),
+    )
+    monkeypatch.setattr(
+        pipeline_module, "STT",
+        lambda cfg: type(
+            "FakeSTT", (), {
+                "config": cfg,
+                "transcribe": lambda self, audio, sample_rate: "salam",
+            },
+        )(),
+    )
+
+    class FakeTTS:
+        def __init__(self, config):
+            self.config = config
+
+        def synthesize(self, text):
+            pytest.fail("TTS must not run when disabled")
+
+    monkeypatch.setattr(pipeline_module, "TTS", FakeTTS)
+    pipeline = VoicePipeline(
+        VoiceSection(),
+        STTConfig(),
+        TTSConfig(enabled=False),
+        chatbot=type(
+            "FakeChatbot", (), {
+                "chat": lambda self, *args, **kwargs: ChatReply(
+                    text="reply", tool_calls=[],
+                ),
+            },
+        )(),
+    )
+
+    result = pipeline.listen_and_reply(play_audio=False)
+
+    assert result.reply_text == "reply"
+    assert result.audio is None
+
+
+def test_voice_pipeline_fails_before_recording_when_stt_disabled(monkeypatch):
+    import mim_ai.voice.pipeline as pipeline_module
+    from mim_ai.config import STTConfig, TTSConfig, VoiceSection
+
+    monkeypatch.setattr(
+        pipeline_module, "record_until_silence",
+        lambda *args, **kwargs: pytest.fail("must not record when STT is disabled"),
+    )
+
+    pipeline = VoicePipeline(VoiceSection(), STTConfig(enabled=False), TTSConfig())
+
+    with pytest.raises(RuntimeError, match="stt.enabled is false"):
+        pipeline.listen_and_reply()

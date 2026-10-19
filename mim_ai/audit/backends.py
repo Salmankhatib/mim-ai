@@ -33,6 +33,9 @@ class LogStorageAdapter:
     def purge_older_than(self, days: int) -> int:
         raise NotImplementedError
 
+    def close(self) -> None:
+        return None
+
 
 # ---------------------------------------------------------------------------
 # SQLite
@@ -73,6 +76,9 @@ class SQLiteBackend(LogStorageAdapter):
         )
         return cur.rowcount
 
+    def close(self) -> None:
+        self.conn.close()
+
 
 # ---------------------------------------------------------------------------
 # JSONL
@@ -99,6 +105,24 @@ class JSONLBackend(LogStorageAdapter):
         with path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")))
             f.write("\n")
+
+    def last_hash(self) -> str | None:
+        """Return the latest hash-chain link across this backend's dated files."""
+        paths = sorted(
+            self.dir.glob(f"{self.prefix}-*.jsonl"),
+            key=lambda path: path.name,
+            reverse=True,
+        )
+        for path in paths:
+            last_hash = None
+            with path.open("r", encoding="utf-8") as fh:
+                for line in fh:
+                    if line.strip():
+                        record = json.loads(line)
+                        last_hash = record.get("line_hash", last_hash)
+            if last_hash is not None:
+                return last_hash
+        return None
 
     def purge_older_than(self, days: int) -> int:
         cutoff = time.time() - days * 86400
@@ -172,6 +196,11 @@ class PostgreSQLBackend(LogStorageAdapter):
         conn.commit()
         return count
 
+    def close(self) -> None:
+        if self._conn is not None:
+            self._conn.close()
+            self._conn = None
+
 
 class MySQLBackend(LogStorageAdapter):
     """Production-ready MySQL adapter."""
@@ -241,6 +270,11 @@ class MySQLBackend(LogStorageAdapter):
         conn.commit()
         return count
 
+    def close(self) -> None:
+        if self._conn is not None:
+            self._conn.close()
+            self._conn = None
+
 
 class MongoDBBackend(LogStorageAdapter):
     """Production-ready MongoDB adapter."""
@@ -278,6 +312,12 @@ class MongoDBBackend(LogStorageAdapter):
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
         result = collection.delete_many({"ts": {"$lt": cutoff}})
         return int(result.deleted_count)
+
+    def close(self) -> None:
+        if self._client is not None:
+            self._client.close()
+            self._client = None
+            self._collection = None
 
 
 class GenericDatabaseBackend(LogStorageAdapter):
@@ -338,6 +378,11 @@ class GenericDatabaseBackend(LogStorageAdapter):
                 removed += 1
         return removed
 
+    def close(self) -> None:
+        close = getattr(self._adapter, "close", None)
+        if callable(close):
+            close()
+
 
 def create_backend(config: Any, table: str) -> LogStorageAdapter:
     """Factory that resolves a concrete backend from config.
@@ -373,12 +418,7 @@ def create_backend(config: Any, table: str) -> LogStorageAdapter:
             getattr(config, "database_name", None),
         )
 
-    return GenericDatabaseBackend(
-        table=table,
-        dsn=getattr(config, "database_url", None),
-        collection=getattr(config, "collection", table),
-        driver=backend_name,
-    )
+    raise ValueError(f"Unsupported audit backend: {backend_name!r}")
 
 
 __all__ = [

@@ -86,7 +86,7 @@ mim = Mim.from_config("config.yaml")
 
 # Local-safe flow: normalization + anonymization work without external services.
 normalized = mim.normalizer.normalize("salam wa7ed 3la ekher")
-print(normalized)  # سلام واحد على الآخر
+print(normalized)  # salam wa7ed 3la ekher
 
 from mim_ai import anonymize
 redacted = anonymize("Mon CIN est AB58075 et mon tel est 0612345678")

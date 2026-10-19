@@ -126,3 +126,8 @@ class NormalizerLogger:
         if not self.enabled:
             return 0
         return self._backend.purge_older_than(self.config.retention_days)
+
+    def close(self) -> None:
+        backend = getattr(self, "_backend", None)
+        if backend is not None:
+            backend.close()

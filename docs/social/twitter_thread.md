@@ -49,7 +49,7 @@ MIM deletes that week.
 🧹 MIM Normalizer:
 
 mim.normalizer.normalize("salam wa7ed 3la ekher")
-→ سلام واحد على الآخر
+→ salam wa7ed 3la ekher
 
 • Under 5ms. Zero GPU. Pure Python.
 • Handles Arabizi, code-switching, Arabic-French mix

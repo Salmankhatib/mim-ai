@@ -7,6 +7,7 @@ Add your own here; reference by name in ChatbotConfig.system_prompt.
 """
 from __future__ import annotations
 
+from pathlib import Path
 
 TEMPLATES: dict[str, str | callable] = {
     "default": (
@@ -48,10 +49,7 @@ def resolve(system_prompt: str, extra: str = "", file_path: str | None = None) -
         base = base(extra)
 
     if file_path:
-        try:
-            file_text = open(file_path, "r", encoding="utf-8").read().strip()
-        except OSError:
-            file_text = ""
+        file_text = Path(file_path).read_text(encoding="utf-8").strip()
         if file_text:
             base = f"{base}\n\n{file_text}"
 

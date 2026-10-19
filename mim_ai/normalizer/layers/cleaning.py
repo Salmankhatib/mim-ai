@@ -63,7 +63,9 @@ class CleaningLayer(BaseLayer):
         #    text is not in `text` — only a short placeholder is. Any
         #    later rule that would have damaged the URL now operates on
         #    a harmless ASCII token instead.
-        if self.config.preserve_urls:
+        if self.config.strip_urls:
+            text = URL_RE.sub("", text)
+        elif self.config.preserve_urls:
             text = self._protect_urls(text, url_map)
 
         # 3. Zero-width and bidi-control characters. These hide inside

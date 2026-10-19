@@ -36,7 +36,7 @@ class TestLayer1Safety:
 
     def test_whitespace_collapsed(self, norm):
         out = norm.normalize("salam    kho    labas")
-        assert out == "سلام kho labas"
+        assert out == "salam kho labas"
 
     def test_newlines_preserved(self, norm):
         out = norm.normalize("salam\nlabas")
@@ -56,6 +56,24 @@ class TestLayer1Safety:
         text = "chouf https://example.ma/foo bar"
         out = norm.normalize(text)
         assert "https://example.ma/foo" in out
+
+    def test_urls_are_removed_when_explicitly_configured(self):
+        cfg = NormalizerConfig.from_mapping({
+            "cleaning": {"strip_urls": True},
+        })
+        out = Normalizer.from_config(cfg).normalize(
+            "open https://example.ma/path now"
+        )
+        assert "https://example.ma/path" not in out
+        assert out == "open now"
+
+    def test_disabling_url_preservation_does_not_force_url_stripping(self):
+        cfg = NormalizerConfig.from_mapping({
+            "cleaning": {"preserve_urls": False},
+        })
+
+        assert cfg.cleaning.preserve_urls is False
+        assert cfg.cleaning.strip_urls is False
 
     def test_nfc_normalization(self, norm):
         # é as e + combining accent vs. precomposed é
@@ -112,9 +130,14 @@ class TestArabicRules:
         assert ar.unify_alef("إبراهيم") == "ابراهيم"
         assert ar.unify_alef("آمن") == "امن"
 
+    def test_default_normalizer_preserves_canonical_hamza_spelling(self, norm):
+        assert norm.normalize("أحمد إبراهيم آمن") == "أحمد إبراهيم آمن"
+
     def test_ya_unified(self):
-        assert ar.unify_ya("على") == "علي"
-        assert ar.unify_ya("مصطفى") == "مصطفي"
+        assert ar.unify_ya("على") == "على"
+        assert ar.unify_ya("علي") == "علي"
+        assert ar.unify_ya("مصطفى") == "مصطفى"
+        assert ar.unify_ya("علی") == "علي"
 
     def test_ta_marbuta_basic(self):
         assert ar.unify_ta_marbuta("مدرسة") == "مدرسه"
@@ -154,8 +177,11 @@ class TestCodeSwitching:
         assert norm.normalize("b8it nchouf daaba") == "bghit nchouf daba"
         assert norm.normalize("بغيت نشوف دابة") == "بغيت نشوف دابا"
 
-    def test_readme_darija_example_normalizes_to_arabic(self, norm):
-        assert norm.normalize("salam wa7ed 3la ekher") == "سلام واحد على الآخر"
+    def test_readme_darija_example_preserves_input_script(self, norm):
+        assert norm.normalize("salam wa7ed 3la ekher") == "salam wa7ed 3la ekher"
+        assert norm.normalize("slm wahed 3laa akhar") == "salam wa7ed 3la ekher"
+        assert norm.normalize("سلم واحد على الاخر") == "سلام واحد على الآخر"
+        assert norm.normalize("علي") == "علي"
         assert norm.normalize("la vie est belle") == "la vie est belle"
 
     def test_darija_french_mix(self, norm):
@@ -164,7 +190,7 @@ class TestCodeSwitching:
         # French must survive
         assert "ça va" in out
         # Arabizi handled by L2 dict if keys present, else passes through
-        assert "salam" in out.lower() or "سلام" in out
+        assert "salam" in out.lower()
 
     def test_arabic_french_mix(self, norm):
         text = "كاين مشكل ف la base de données"
@@ -332,6 +358,6 @@ def test_readme_local_dev_flow_works_without_external_llm():
     normalized = app.normalizer.normalize("salam wa7ed 3la ekher")
     result = anonymizer.anonymize("Mon CIN est AB58075 et mon tel est 0612345678")
 
-    assert normalized == "سلام واحد على الآخر"
+    assert normalized == "salam wa7ed 3la ekher"
     assert any(item["type"] == "CIN_MA" for item in result.entities_found)
     assert any(item["type"] == "PHONE_MA" for item in result.entities_found)

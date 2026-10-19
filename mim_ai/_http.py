@@ -32,10 +32,10 @@ def _api_key(config: Any) -> str:
 def _headers(config: Any, *, content_type: str | None = None) -> dict[str, str]:
     headers = {}
     api_key = _api_key(config)
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
     if content_type:
         headers["Content-Type"] = content_type
+    if api_key:
+        headers["Authorization"] = "Bearer " + api_key
     return headers
 
 

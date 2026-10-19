@@ -63,6 +63,9 @@ def load_config(path_or_dict: str | Path | dict[str, Any] | None) -> AnonymizerC
     if not isinstance(payload, dict):
         raise ValueError("Anonymizer config root must be a mapping/object.")
 
+    if isinstance(payload.get("anonymizer"), dict):
+        payload = payload["anonymizer"]
+
     return AnonymizerConfig.from_mapping(payload)
 
 

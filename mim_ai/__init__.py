@@ -162,8 +162,21 @@ class Mim:
 
     def shutdown(self) -> None:
         """Release resources. Idempotent."""
-        for attr in ("_voice", "_chatbot", "_audit", "_logs", "_normalizer_log", "_intents", "_normalizer"):
-            setattr(self, attr, None)
+        seen: set[int] = set()
+        try:
+            for component in (
+                self._voice, self._chatbot, self._audit, self._logs,
+                self._normalizer_log, self._intents, self._normalizer,
+            ):
+                if component is None or id(component) in seen:
+                    continue
+                seen.add(id(component))
+                close = getattr(component, "close", None)
+                if callable(close):
+                    close()
+        finally:
+            for attr in ("_voice", "_chatbot", "_audit", "_logs", "_normalizer_log", "_intents", "_normalizer"):
+                setattr(self, attr, None)
 
 
 __all__ = [

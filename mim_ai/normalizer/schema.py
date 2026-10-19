@@ -21,14 +21,12 @@ class CleaningConfig:
     def __post_init__(self) -> None:
         if self.strip_urls:
             self.preserve_urls = False
-        else:
-            self.preserve_urls = True
 
 
 @dataclass
 class RulesConfig:
     """Layer 2 toggles and dictionary paths."""
-    unify_alef: bool = True
+    unify_alef: bool = False
     unify_ya: bool = True
     unify_ta_marbuta: bool = False
     remove_diacritics: bool = True  # ⚠️  see arabic_rules.unify_ta_marbuta

@@ -1,11 +1,11 @@
 import json
-from pathlib import Path
+import sqlite3
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
-from mim_ai import MimConfig, load_config
+from mim_ai import Mim, MimConfig, load_config
 from mim_ai.voice.pipeline import VoicePipeline
 from mim_ai.audit import AuditLogger, NormalizerLogger
 from mim_ai.audit.backends import (
@@ -85,6 +85,23 @@ def test_normalizer_logger_accepts_database_adapter():
     assert result["what_it_did"]["rules_applied"] == 3
 
 
+def test_normalizer_logger_counts_oov_tokens_by_default(tmp_path):
+    logger = NormalizerLogger(NormalizerLogConfig(
+        enabled=True,
+        backend="sqlite",
+        db_path=str(tmp_path / "normalizer.db"),
+        purge_on_start=False,
+    ))
+
+    logger.emit(trace_id="t-private", jargon_skipped={"private-token": 2})
+    row = logger._backend.conn.execute(
+        "SELECT jargon_skipped FROM normalizer_events"
+    ).fetchone()
+
+    assert json.loads(row[0]) == {"<count>": 2}
+    logger.close()
+
+
 def test_audit_logger_returns_summary_for_called_event():
     cfg = AuditConfig(enabled=True, backend="sqlite", db_path="./tmp/test_audit.db", adapter=RecordingAdapter, collection="audit_events")
     logger = AuditLogger(cfg)
@@ -130,6 +147,41 @@ def test_database_backend_factory_builds_native_backends():
     assert isinstance(create_backend(postgres_cfg, "audit_events"), PostgreSQLBackend)
     assert isinstance(create_backend(mysql_cfg, "audit_events"), MySQLBackend)
     assert isinstance(create_backend(mongo_cfg, "audit_events"), MongoDBBackend)
+
+
+def test_unknown_audit_backend_fails_explicitly():
+    with pytest.raises(ValueError, match="Unsupported audit backend"):
+        create_backend(SimpleNamespace(backend="typo"), "audit_events")
+
+
+def test_mim_shutdown_closes_audit_and_sqlite_history(tmp_path):
+    config = MimConfig.from_dict({
+        "audit": {
+            "enabled": True,
+            "backend": "sqlite",
+            "db_path": str(tmp_path / "audit.db"),
+        },
+        "chatbot": {
+            "enabled": True,
+            "history_backend": "sqlite",
+            "history_dsn": str(tmp_path / "history.db"),
+            "use_normalizer": False,
+            "use_intents": False,
+            "use_audit_log": False,
+            "use_normalizer_log": False,
+        },
+    })
+    app = Mim(config)
+    audit = app.audit
+    chatbot = app.chatbot
+
+    app.shutdown()
+    app.shutdown()
+
+    with pytest.raises(sqlite3.ProgrammingError):
+        audit._backend.conn.execute("SELECT 1")
+    with pytest.raises(sqlite3.ProgrammingError):
+        chatbot.history.conn.execute("SELECT 1")
 
 
 def test_main_config_loads_chatbot_voice_sections():
@@ -216,6 +268,30 @@ def test_audit_hash_chain_persists_across_restarts(tmp_path):
     assert rows[2]["prev_hash"] == rows[1]["line_hash"]
 
 
+def test_jsonl_hash_chain_persists_across_restarts(tmp_path):
+    config = AuditConfig(
+        enabled=True,
+        backend="jsonl",
+        jsonl_path=str(tmp_path),
+        hash_chain=True,
+        purge_on_start=False,
+    )
+    first = AuditLogger(config)
+    first.emit(event="first", trace_id="trace-1")
+    first_hash = first._last_hash
+    first.close()
+
+    second = AuditLogger(config)
+    second.emit(event="second", trace_id="trace-2")
+
+    assert second._backend.last_hash() == second._last_hash
+    assert second._last_hash != first_hash
+    log_path = next(tmp_path.glob("audit_events-*.jsonl"))
+    rows = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
+    assert rows[1]["prev_hash"] == rows[0]["line_hash"]
+    second.close()
+
+
 def test_chatbot_warns_when_logger_auto_wiring_fails(monkeypatch):
     import mim_ai.audit as audit_module
     from mim_ai.chatbot.chatbot import Chatbot
@@ -253,8 +329,19 @@ def test_voice_pipeline_uses_configured_normalizer_and_audit(monkeypatch):
     audit = SimpleNamespace(emit=lambda **kwargs: audit_events.append(kwargs))
 
     monkeypatch.setattr("mim_ai.voice.pipeline.record_until_silence", lambda *args, **kwargs: np.array([0.1, 0.2], dtype=np.float32))
-    monkeypatch.setattr("mim_ai.voice.pipeline.STT", lambda cfg: SimpleNamespace(transcribe=lambda audio, sr: "salam"))
-    monkeypatch.setattr("mim_ai.voice.pipeline.TTS", lambda cfg: SimpleNamespace(synthesize=lambda text: (np.array([0.5, 0.5], dtype=np.float32), 16000)))
+    monkeypatch.setattr(
+        "mim_ai.voice.pipeline.STT",
+        lambda cfg: SimpleNamespace(
+            config=cfg, transcribe=lambda audio, sr: "salam",
+        ),
+    )
+    monkeypatch.setattr(
+        "mim_ai.voice.pipeline.TTS",
+        lambda cfg: SimpleNamespace(
+            config=cfg,
+            synthesize=lambda text: (np.array([0.5, 0.5], dtype=np.float32), 16000),
+        ),
+    )
     monkeypatch.setattr("mim_ai.voice.pipeline.play", lambda *args, **kwargs: None)
 
     pipeline = VoicePipeline(

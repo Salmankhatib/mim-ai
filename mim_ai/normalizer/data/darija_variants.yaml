@@ -3,13 +3,57 @@
 # Only Darija words are listed here. French/English words stay untouched
 # and should be placed in the skip_words configuration when needed.
 
-arabizi_to_arabic:
-  salam: "سلام"
-  wa7ed: "واحد"
-  "3la": "على"
-  ekher: "الآخر"
-
 entries:
+  - canonical_arabizi: "salam"
+    canonical_arabic: "سلام"
+    variants:
+      arabizi:
+        - "salam"
+        - "slam"
+        - "slm"
+      arabic:
+        - "سلام"
+        - "سلم"
+
+  - canonical_arabizi: "wa7ed"
+    canonical_arabic: "واحد"
+    variants:
+      arabizi:
+        - "wa7ed"
+        - "wahed"
+        - "w7ed"
+        - "wahed"
+        - "w7d"
+        - "wahid"
+        - "wahd"
+        - "wa7id"
+        - "whd"
+      arabic:
+        - "واحد"
+
+  - canonical_arabizi: "3la"
+    canonical_arabic: "على"
+    variants:
+      arabizi:
+        - "3la"
+        - "3laa"
+      arabic:
+        - "على"
+
+  - canonical_arabizi: "ekher"
+    canonical_arabic: "الآخر"
+    variants:
+      arabizi:
+        - "ekher"
+        - "akher"
+        - "akhar"
+        - "3lakher"
+        - "3lakhir"
+
+      arabic:
+        - "الآخر"
+        - "الاخر"
+
   - canonical_arabizi: "bghit"
     canonical_arabic: "بغيت"
     variants:
@@ -32,6 +76,10 @@ entries:
         - "nchouf"
         - "nchof"
         - "nshof"
+        - "nchouff"
+        - "nshouf"
+        - "anchouf"
+        - "anchof"
       arabic:
         - "نشوف"
         - "نشف"
@@ -47,17 +95,6 @@ entries:
         - "دابا"
         - "دابة"
 
-  - canonical_arabizi: "salam"
-    canonical_arabic: "سلام"
-    variants:
-      arabizi:
-        - "salam"
-        - "slam"
-        - "slm"
-      arabic:
-        - "سلام"
-        - "سلم"
-
   - canonical_arabizi: "labas"
     canonical_arabic: "لاباس"
     variants:
@@ -67,17 +104,6 @@ entries:
       arabic:
         - "لاباس"
         - "لباس"
-
-  - canonical_arabizi: "wa7ed"
-    canonical_arabic: "واحد"
-    variants:
-      arabizi:
-        - "wa7ed"
-        - "wahed"
-        - "w7ed"
-      arabic:
-        - "واحد"
-        - "واجد"
 
   - canonical_arabizi: "me3lich"
     canonical_arabic: "معلش"
@@ -104,6 +130,7 @@ entries:
       arabizi:
         - "afak"
         - "3afak"
+        - "3fak"
       arabic:
         - "عافاك"
 
@@ -113,5 +140,7 @@ entries:
       arabizi:
         - "choukran"
         - "chokran"
+        - "shokran"
+        - "shoukran"
       arabic:
         - "شكرا"

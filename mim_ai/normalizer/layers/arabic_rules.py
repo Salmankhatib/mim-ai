@@ -22,7 +22,7 @@ Design principles
 What lives here
 ---------------
     unify_alef            أ إ آ ٱ  -> ا
-    unify_ya              ى         -> ي
+    unify_ya              ی         -> ي
     unify_ta_marbuta      ة         -> ه
     remove_tashkeel       strip Arabic diacritics
     normalize_arabic_digits   ٠١٢٣ -> 0123
@@ -42,9 +42,6 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from typing import Iterable
-
-
 # ---------------------------------------------------------------------------
 # Character tables
 # ---------------------------------------------------------------------------
@@ -60,7 +57,6 @@ ALEF_FORMS: dict[str, str] = {
 }
 
 YA_FORMS: dict[str, str] = {
-    "\u0649": "\u064A",   # ى  -> ي   (Alef Maksura -> Ya)
     "\u06CC": "\u064A",   # ی  -> ي   (Persian Yeh)
 }
 
@@ -137,10 +133,10 @@ def unify_alef(token: str) -> str:
 
 def unify_ya(token: str) -> str:
     """
-    Collapse Alef Maksura (ى) and Persian Yeh (ی) to standard Ya (ي).
+    Convert Persian Yeh (ی) to Arabic Yeh (ي), preserving Alef Maksura (ى).
 
-    Note: we do NOT touch the final-ya vs. middle-ya distinction in
-    Egyptian/Levantine orthography — that is not a Darija concern.
+    Alef Maksura is a distinct Arabic letter and collapsing it changes
+    standard spellings such as على and مصطفى.
     """
     return _translate(token, YA_FORMS)
 
@@ -216,7 +212,7 @@ def collapse_whitespace(token: str) -> str:
 def apply_arabic_rules(
     token: str,
     *,
-    unify_alef_: bool = True,
+    unify_alef_: bool = False,
     unify_ya_: bool = True,
     unify_ta_marbuta_: bool = True,
     remove_diacritics: bool = True,

@@ -1,7 +1,7 @@
 """
-Generic YAML loader and merger used by the Arabizi dictionary and
-the Arabic-rules tables. Developer overrides always win on key
-collision. Both a missing base file and a malformed override must
+Generic YAML loader and merger used by the Arabizi dictionary.
+Developer overrides always win on key collision. Both a missing
+file and malformed override must
 raise a clear error at construction time, not silently no-op.
 """
 from __future__ import annotations

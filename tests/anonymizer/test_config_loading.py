@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import yaml
 
 from mim_ai.anonymizer.config import AnonymizerConfig, load_config
@@ -26,3 +24,24 @@ def test_yaml_and_dict_config_loading(tmp_path):
     loaded_from_dict = load_config({"enabled": False, "custom_patterns": [{"name": "X", "pattern": "abc"}]})
     assert loaded_from_dict.enabled is False
     assert loaded_from_dict.custom_patterns[0]["name"] == "X"
+
+
+def test_full_application_yaml_loads_nested_anonymizer_config(tmp_path):
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        yaml.safe_dump({
+            "anonymizer": {
+                "enabled": False,
+                "default_operators": {"DEFAULT": "redact"},
+                "custom_patterns": [{"name": "ORDER_ID", "pattern": "ORDER-[0-9]+"}],
+            },
+            "voice": {"enabled": True},
+        }),
+        encoding="utf-8",
+    )
+
+    loaded = load_config(config_path)
+
+    assert loaded.enabled is False
+    assert loaded.default_operators == {"DEFAULT": "redact"}
+    assert loaded.custom_patterns[0]["name"] == "ORDER_ID"

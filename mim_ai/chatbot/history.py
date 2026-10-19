@@ -21,9 +21,6 @@ import json
 import sqlite3
 import time
 from pathlib import Path
-from typing import Any
-
-
 # ---------------------------------------------------------------------------
 # Protocol — the only thing the chatbot depends on.
 # ---------------------------------------------------------------------------
@@ -33,6 +30,9 @@ class HistoryStore:
     def get(self, session_id: str) -> list[dict]: ...
     def append(self, session_id: str, message: dict) -> None: ...
     def clear(self, session_id: str) -> None: ...
+
+    def close(self) -> None:
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -134,6 +134,9 @@ class SQLiteHistoryStore:
     def clear(self, sid: str) -> None:
         self.conn.execute("DELETE FROM session_messages WHERE session_id = ?", (sid,))
 
+    def close(self) -> None:
+        self.conn.close()
+
 
 # ---------------------------------------------------------------------------
 # 3. Redis
@@ -181,6 +184,9 @@ class RedisHistoryStore:
 
     def clear(self, sid: str) -> None:
         self._redis.delete(self._key(sid))
+
+    def close(self) -> None:
+        self._redis.close()
 
 
 # ---------------------------------------------------------------------------
@@ -272,8 +278,7 @@ class PostgresHistoryStore:
 def build_history_store(config) -> HistoryStore:
     """
     Return the HistoryStore indicated by `config.history_backend`.
-    Never raises on unknown backend — falls back to memory with a
-    printed warning, so a misconfig doesn't crash a running service.
+    Raises on unknown backend so a typo cannot silently discard history.
     """
     backend = getattr(config, "history_backend", "memory")
     dsn = getattr(config, "history_dsn", "") or ""
@@ -293,5 +298,4 @@ def build_history_store(config) -> HistoryStore:
     if backend == "postgres":
         return PostgresHistoryStore(dsn or "postgresql://localhost/mim", max_turns, ttl)
 
-    print(f"[mim_ai] Unknown history_backend={backend!r}; using memory.")
-    return InMemoryHistoryStore(max_turns, ttl)
+    raise ValueError(f"Unsupported history backend: {backend!r}")

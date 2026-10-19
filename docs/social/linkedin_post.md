@@ -42,7 +42,7 @@ Five modules, one config file:
 
 ```python
 mim.normalizer.normalize("salam wa7ed 3la ekher")
-# → سلام واحد على الآخر
+# → salam wa7ed 3la ekher
 ```
 
 🛡️ **Anonymizer** — PII redaction with native Moroccan CIN and phone number patterns.

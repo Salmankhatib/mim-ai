@@ -18,6 +18,8 @@ class TTS:
         self.config = config
 
     def synthesize(self, text: str) -> tuple[np.ndarray, int]:
+        if not self.config.enabled:
+            raise RuntimeError("tts.enabled is false in your config")
         try:
             audio_bytes, mime = http_speak(self.config, text)
         except APIError as e:

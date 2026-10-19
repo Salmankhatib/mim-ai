@@ -50,22 +50,22 @@ class AuditLogger:
         backend = getattr(self, "_backend", None)
         if backend is None or not self.config.hash_chain:
             return None
-        try:
-            if hasattr(backend, "conn") and hasattr(backend, "table"):
-                row = backend.conn.execute(
-                    f"SELECT line_hash FROM {backend.table} ORDER BY seq DESC LIMIT 1"
-                ).fetchone()
-                if row:
-                    return row[0]
-            if hasattr(backend, "_fallback_path") and backend._fallback_path.exists():
-                with backend._fallback_path.open("r", encoding="utf-8") as fh:
-                    for line in fh:
-                        if line.strip():
-                            payload = json.loads(line)
-                            last_line_hash = payload.get("line_hash")
-                return last_line_hash
-        except Exception:  # pragma: no cover - backend-specific
-            return None
+        if hasattr(backend, "conn") and hasattr(backend, "table"):
+            row = backend.conn.execute(
+                f"SELECT line_hash FROM {backend.table} ORDER BY seq DESC LIMIT 1"
+            ).fetchone()
+            if row:
+                return row[0]
+        if hasattr(backend, "last_hash"):
+            return backend.last_hash()
+        if hasattr(backend, "_fallback_path") and backend._fallback_path.exists():
+            last_line_hash = None
+            with backend._fallback_path.open("r", encoding="utf-8") as fh:
+                for line in fh:
+                    if line.strip():
+                        payload = json.loads(line)
+                        last_line_hash = payload.get("line_hash", last_line_hash)
+            return last_line_hash
         return None
 
     # -----------------------------------------------------------------
@@ -195,6 +195,11 @@ class AuditLogger:
         if not self.enabled:
             return 0
         return self._backend.purge_older_than(self.config.retention_days)
+
+    def close(self) -> None:
+        backend = getattr(self, "_backend", None)
+        if backend is not None:
+            backend.close()
 
 
 # ---------------------------------------------------------------------------

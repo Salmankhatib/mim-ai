@@ -25,6 +25,10 @@ text = "salam wa7ed 3la ekher, bghit n3ref kifach nt3amro app?"
 print(app.normalizer.normalize(text))
 ```
 
+Normalization preserves the input script: Arabizi variants resolve to canonical Arabizi, while Arabic variants resolve to canonical Arabic. It does not translate between scripts.
+
+Normalizer feedback logs record counts for skipped/OOV tokens by default, not the raw tokens. Set `logs.capture_skipped_tokens: true` only when storing those user-provided tokens is acceptable for your application.
+
 ## Config keys
 
 In the config, the normalizer can be configured through:

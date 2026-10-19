@@ -9,7 +9,7 @@ normalizer:
     strip_tatweel: true
     strip_urls: false
   rules:
-    unify_alef: true
+    unify_alef: false
     unify_ya: true
     unify_ta_marbuta: false
     remove_diacritics: true
@@ -122,7 +122,7 @@ logs:
   retention_days: 7
   capture_jargon_used: true
   capture_jargon_skipped: true
-  capture_skipped_tokens: true
+  capture_skipped_tokens: false
   max_tokens_per_event: 50
   sample_rate: 1.0
   purge_on_start: true

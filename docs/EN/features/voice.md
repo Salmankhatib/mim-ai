@@ -41,11 +41,14 @@ print(reply.reply_text)
 - `voice.use_normalizer`
 - `voice.use_intents`
 - `voice.use_audit_log`
+- `voice.use_chatbot`
 - `voice.max_record_seconds`
 - `voice.vad.*`
 - `voice.audio.*`
 - `stt.*`
 - `tts.*`
+
+Set `stt.enabled: false` to make voice transcription fail explicitly before recording. When `tts.enabled: false`, the pipeline returns the text reply without audio. With `voice.use_chatbot: false`, it returns the transcript without generating a reply.
 
 ## Benefits
 

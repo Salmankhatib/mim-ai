@@ -11,10 +11,10 @@ def build_custom_recognizers(patterns: list[dict[str, Any]] | None) -> list[Patt
     recognizers: list[PatternRecognizer] = []
     for index, item in enumerate(patterns or []):
         if not isinstance(item, dict):
-            continue
+            raise TypeError(f"Custom pattern at index {index} must be a mapping")
         pattern = item.get("pattern") or item.get("regex")
         if not pattern:
-            continue
+            raise ValueError(f"Custom pattern at index {index} is missing 'pattern'")
         entity_name = str(item.get("name") or item.get("entity") or f"CUSTOM_{index}")
         recognizers.append(
             PatternRecognizer(

@@ -62,6 +62,8 @@ class VoicePipeline:
     ) -> VoiceReply:
         if not self.enabled:
             return VoiceReply()
+        if not self.stt.config.enabled:
+            raise RuntimeError("stt.enabled is false in your config")
 
         t0 = time.perf_counter()
         trace_id = f"voice_{uuid.uuid4().hex[:12]}"
@@ -111,16 +113,18 @@ class VoicePipeline:
 
         # 5. Chat
         reply_text, tools = "", []
-        if self.chatbot:
+        if self.cfg.use_chatbot and self.chatbot:
             r = self.chatbot.chat(transcript, session_id=session_id, user_ref=user_ref)
             reply_text, tools = r.text, r.tool_calls
             if getattr(r, "intent", None):
                 intent_name, intent_score = r.intent, getattr(r, "intent_score", 0.0)
-        if not reply_text:
+        if self.cfg.use_chatbot and not reply_text:
             reply_text = "سمح ليا، ما فهمتش."
 
         # 6. Speak
-        audio_out, sr = self.tts.synthesize(reply_text)
+        audio_out, sr = (None, 0)
+        if reply_text and self.tts.config.enabled:
+            audio_out, sr = self.tts.synthesize(reply_text)
         if play_audio and audio_out is not None:
             play(audio_out, sr, device=self.cfg.audio.output_device)
 
@@ -130,7 +134,8 @@ class VoicePipeline:
             self.audit.emit(
                 event="voice_turn", trace_id=trace_id, user_ref=user_ref,
                 input_text=transcript, output_text=reply_text,
-                duration_ms=duration_ms, status="ok",
+                duration_ms=duration_ms,
+                status="ok" if reply_text else "transcribed",
                 extra={
                     "session_id": session_id, "intent": intent_name,
                     "tool_calls": [t["name"] for t in tools],
@@ -142,4 +147,5 @@ class VoicePipeline:
             intent=intent_name, intent_score=intent_score,
             audio=audio_out, sample_rate=sr,
             trace_id=trace_id, duration_ms=duration_ms, tool_calls=tools,
+            status="ok" if reply_text else "transcribed",
         )

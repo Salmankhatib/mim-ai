@@ -29,7 +29,7 @@ Package layout
 
     darija_rules.py   token-level dispatch (Layer 2 brain)
     arabic_rules.py   character-level Arabic substitutions
-    arabizi.py        Latin->Arabic whole-word dictionary
+    arabizi.py        same-script whole-word variant dictionary
     dictionary.py     YAML loader + merger
     data/             package data (YAML dictionaries)
 

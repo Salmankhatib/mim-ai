@@ -18,6 +18,8 @@ class STT:
         self.config = config
 
     def transcribe(self, audio: np.ndarray, sample_rate: int) -> str:
+        if not self.config.enabled:
+            raise RuntimeError("stt.enabled is false in your config")
         wav_bytes = _to_wav_bytes(audio, sample_rate)
         try:
             return http_transcribe(self.config, wav_bytes)

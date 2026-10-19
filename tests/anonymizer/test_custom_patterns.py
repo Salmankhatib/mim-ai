@@ -1,6 +1,11 @@
 from types import MappingProxyType
 
+import pytest
+
 from mim_ai.anonymizer import anonymize
+from mim_ai.anonymizer.config import AnonymizerConfig
+from mim_ai.anonymizer.operators import build_operators
+from mim_ai.anonymizer.recognizers.custom import build_custom_recognizers
 
 
 def test_custom_patterns_are_supported():
@@ -41,3 +46,15 @@ def test_custom_patterns_accept_dynamic_mapping_payloads():
 
     assert any(item["type"] == "ORDER_ID" for item in result.entities_found)
     assert "[ORDER]" in result.text
+
+
+def test_unknown_operator_does_not_fall_back_to_replace():
+    with pytest.raises(ValueError, match="Unsupported anonymizer operator"):
+        build_operators(AnonymizerConfig(
+            default_operators={"DEFAULT": "replce"},
+        ))
+
+
+def test_custom_pattern_without_regex_fails_explicitly():
+    with pytest.raises(ValueError, match="missing 'pattern'"):
+        build_custom_recognizers([{"name": "MISSING"}])
