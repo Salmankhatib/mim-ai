@@ -55,3 +55,18 @@ _last_hash is in-memory only. After a process restart, the first new row gets pr
 
 M7. Silent failure swallowing in Chatbot.from_config
 Auto-wiring wraps AuditLogger/NormalizerLogger construction in bare except Exception: pass. For a compliance-oriented product, audit silently not initializing must never be silent — log a warning at minimum.
+
+
+
+M6 hash chain: _restore_last_hash() reads the last row's hash at startup — restarts no longer break verification. Caveat: only works for sqlite/generic fallback; the rotating jsonl backend still can't restore (chain resets at midnight rotation and after purge). Fine for v0.1 if documented.
+
+Residuals (minor, didn't claim otherwise)
+spaCy model still not declared — presidio-analyzer is a hard dependency but its default analyzer needs an en_core_web_* model that isn't in pyproject.toml. Fresh pip install mim-ai → anonymize(...) likely raises until a manual model download. This is your biggest remaining quick-start risk — make the anonymizer a mim-ai[anonymizer] extra or document the download step prominently.
+__pycache__ still committed (both dirs) — git rm -r + gitignore.
+arabic_rules_path config option is still parsed but never loaded by any layer; worse, the shipped default points at ./mim_ai/... (CWD-relative, usually nonexistent → silently skipped). Either wire it into RulesLayer or delete the option.
+data/arabizi_darija.yaml still dead package data.
+STT language still sent as X-Language header — OpenAI-compatible APIs expect a form field, so the ar hint is ignored in practice.
+LLM errors still produce non-empty text → audit status="ok" and the error string lands in session history.
+README nit: result.entities should be result.entities_found.
+langdetect/pydantic still appear unused in the codebase.
+None of these contradict the README the way the old ones did.

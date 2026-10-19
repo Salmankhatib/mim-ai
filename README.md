@@ -129,7 +129,7 @@ from mim_ai import anonymize
 
 result = anonymize("Mon CIN est AB58075 et mon tel est 0612345678")
 print(result.text)    # Mon CIN est <CIN_MA> et mon tel est <PHONE_MA>
-print(result.entities)  # [EntityResult(type='CIN_MA', ...), ...]
+print(result.entities_found)  # [EntityResult(type='CIN_MA', ...), ...]
 ```
 
 Built on top of Microsoft Presidio with native Moroccan recognizers:
