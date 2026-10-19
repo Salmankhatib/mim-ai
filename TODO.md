@@ -70,3 +70,82 @@ LLM errors still produce non-empty text → audit status="ok" and the error stri
 README nit: result.entities should be result.entities_found.
 langdetect/pydantic still appear unused in the codebase.
 None of these contradict the README the way the old ones did.
+
+////////////////////
+
+# MIM-AI Codebase Audit — Final Report
+
+**Scope:** Full static audit of `Salmankhatib/mim-ai` @ `main` (sha `292e68e`) — README, all 5 subsystems (normalizer, anonymizer, chatbot, voice, audit), config layer, packaging, tests, and docs. I could not execute the code (no sandbox network), so this is a read-through audit cross-checked against your own test suite — which turned out to be a useful consistency check.
+
+---
+
+## 1. Architecture Assessment
+
+The architecture is genuinely good — better than most v0.1.0 solo SDKs:
+
+| Decision | Verdict |
+|---|---|
+| Lazy subsystem loading via `Mim` facade + module-level `__getattr__` | ✅ Clean, tested (`test_optional_subsystems_stay_lazy_loaded`) |
+| Layered normalizer (cheap-first, swappable layers, lossless token reassembly) | ✅ The strongest part of the codebase |
+| Pluggable audit backends behind a 2-method adapter contract | ✅ SQLite/JSONL/Postgres/MySQL/Mongo + custom adapter — well done |
+| Hash-chained audit log + rights of access/erasure helpers | ✅ Right conceptual model for Law 09-08 |
+| stdlib-urllib OpenAI-compatible LLM/STT/TTS client (no SDK lock-in) | ✅ Pragmatic; MNTRA preset shows the sovereign-AI intent is real |
+| Config-first dataclasses with unknown-key filtering | ✅ Fixed since TODO; robust now |
+
+Module boundaries are respected, docstrings are exceptional, and your test file for the normalizer (`test_normalizer.py`) is a model of "regression guards for text-mangling" thinking — idempotency, French/English pass-through, code-switching, length-never-grows.
+
+---
+
+## 2. Critical Findings (claim ≠ reality)
+
+### 🔴 C1. README quick-start example #1 does not produce the advertised output
+README: `normalize("salam wa7ed 3la ekher")` → `سلام واحد على الآخر`.
+Reality: `normalizer/data/skip_words.yaml` lists `"salam"`, `"labas"`, `"bghit"`, `"wa7ed"`, `"wahed"`, `"kho"` — the skip check runs **before** the dictionary lookup in `_normalize_token`, so these tokens pass through untouched. Worse, "3la" and "ekher" aren't in the dictionary at all (10 entries total). Your own updated test quietly asserts `"salam" in normalized` — the test was bent to fit the bug, not the other way around. **The flagship demo in the README fails as printed.** Fix: remove Darija words from skip_words (only `merci/bonjour/hello/thanks` belong there), grow the dictionary to cover the example.
+
+### 🔴 C2. README anonymizer example output format is wrong
+Default operators are `CIN_MA: replace` → `[CIN_MA]` (brackets, from `_operator_for` fallback) and `PHONE_MA: mask` → `****345678`. README shows `<CIN_MA>` and `<PHONE_MA>`. Detection works (entities_found is populated pre-operator), but the printed output is fiction. Either change defaults to `replace` with `new_value: <ENTITY>` angle-bracket style or fix the README.
+
+### 🔴 C3. `verify_chain()` — the ISO 42001 tamper-evidence verifier — is broken by construction
+`AuditLogger.emit()` computes `line_hash` over the row dict **which does not contain `seq`** (SQLite assigns it at insert). `verify_chain()` recomputes over `SELECT *` **which does contain `seq`**. The canonical JSON payloads differ → `verify_chain()` returns `(False, "seq=1 line_hash mismatch")` on a fresh, untouched database. Notably, **no test calls `verify_chain`** — `test_audit_hash_chain_persists_across_restarts` only checks `prev_hash` linkage, which is why this slipped through. This is your most dangerous flaw because compliance tooling that always cries "tampering" is worse than none. Fix: exclude `seq` in `verify_chain`, or include it in `emit`.
+
+### 🔴 C4. Voice "recording" is still a stub — and it's silent about it
+`record_until_silence()` records a **fixed** window of `silence_timeout_ms` (1.5 s) via `sd.rec`, with no VAD and no silence detection. `VADConfig.threshold` / `min_silence_ms` are accepted, plumbed, and **never consumed**. Without sounddevice it returns a buffer of **zeros** which is then sent to the paid STT endpoint. `play()` swallows all exceptions. The README sells "records → transcribes → chats → speaks"; the actual UX captures 1.5 s of ambient audio and truncates mid-sentence. TODO.md still flags this as critical — the README should mark voice as preview/beta, or ship a real energy-threshold VAD (it's ~40 lines with the existing numpy dependency).
+
+### 🟠 C5. TTS double-request billing bug
+`_http.speak()` fires a second **identical POST** whenever the first response is JSON-shaped (any dict without a `raw` bytes field) — doubling TTS cost for that class of provider responses. The fallback re-request logic should only run when the first response definitively wasn't audio.
+
+### 🟠 C6. Fresh-install anonymizer likely crashes
+`AnalyzerEngine()` (Presidio default) requires a spaCy model (`en_core_web_*`) that is **not** in `pyproject.toml` and not documented in the README. `pip install mim-ai && anonymize(...)` → `OSError` until a manual model download. Your own TODO flags this as the biggest quick-start risk. Also: `language="en"` is hardcoded in `analyzer.analyze()`, so NER is weak on exactly the French/Darija text you target (your pattern recognizers still work, so CIN/phone pass). Consider a regex-only fallback mode or a `[anonymizer]` extra with documented `python -m spacy download`.
+
+---
+
+## 3. Moderate / Structural Issues
+
+- **Dependency weight vs "zero bloat" claim:** `presidio-analyzer` drags in **spaCy** (~heavy, model download), while `langdetect` and `pydantic` appear unused in the codebase. The README's "no torch, no sounddevice" is technically true but spacy is the same class of heaviness. Trim or justify.
+- **Erasure vs tamper-evidence contradiction:** `delete_by_user()` and startup retention purge delete mid-chain rows → `verify_chain()` can never pass afterward. You log a `deletion` event (good instinct) but the chain still reads as tampered. For a Law 09-08 product this needs a designed answer: per-day chains, signed checkpoints, or a `tombstone` row type that closes a chain segment.
+- **Intent "hybrid/llm" strategy is decorative:** `IntentConfig.strategy` documents `rule | llm | hybrid`, but the chatbot only ever calls `match_rule_based`; `IntentRegistry.as_llm_tool()` is never wired into tool schemas; `Intent.tool` is never executed. Either implement or downgrade the docstring to what's real (rule-only).
+- **Dead config surface:** `arabic_rules_path` (parsed, never loaded), `strip_mentions`/`strip_hashtags` (parsed, cleaning layer ignores them), `arabizi_darija.yaml` (dead package data), root `darija/*.yaml` duplicates `normalizer/data/` and will drift, `mimExemple.yaml` naming leftover, `Mim._logs` never used. A senior reviewer will clock these.
+- **Repo hygiene:** committed `__pycache__/*.pyc` (both `mim_ai/` and `tests/`), stale TODO.md entries (C1/C2/C4/C5 listed as unfixed when the code shows they're partially fixed — the file now contradicts reality in both directions).
+- **No CI visible** in the tree (no `.github/workflows`). For a compliance-adjacent tool, CI running `pytest` + a `verify_chain` round-trip is essential.
+- Minor: voice pipeline's intent match ignores `config.intents.threshold`; `Normalizer.normalize()` double-reads `layer2_output` redundantly; double normalization in voice→chatbot path (harmless, idempotent, but costs a pass).
+
+---
+
+## 4. What's genuinely strong (worth protecting)
+
+- Normalizer layer design + safety test suite — best-in-repo.
+- Audit schema, multi-backend factory, retention, erasure, restart-persistent chain head (`_restore_last_hash`) — the *thinking* here is senior-level; it's the verify implementation that betrayed it.
+- Chatbot: correct tool-call loop, OpenAI-spec-compliant assistant message shape, history caps + TTL, normalized-text history (privacy-correct), audit status on error.
+- Positioning/docs: bilingual docs, manifesto, architecture doc, press kit — unusually complete go-to-market for a dev tool.
+
+---
+
+
+## 6. Priority fix list
+1. `verify_chain`: exclude `seq` from the recomputed body (+ add a round-trip test: emit → verify → `True`). *Half a day.*
+2. Purge Darija words from `skip_words.yaml`; expand dictionary to cover README example; make README/test/output agree. *1 day.*
+3. README anonymizer output format ↔ default operators. *1 hour.*
+4. Anonymizer: document/install spaCy model, or regex-only fallback. *1–2 days.*
+5. Voice: real energy-VAD or label it `preview` in README. *2–3 days.*
+6. `_http.speak` double-POST guard. *2 hours.*
+7. `git rm -r __pycache__`, prune dead config, add CI workflow running pytest. *1 day.*

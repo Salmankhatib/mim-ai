@@ -15,6 +15,7 @@ from mim_ai.audit.backends import (
     create_backend,
 )
 from mim_ai.audit.config import AuditConfig, NormalizerLogConfig
+from mim_ai.audit.verify import verify_chain
 
 
 class RecordingAdapter:
@@ -101,6 +102,24 @@ def test_audit_logger_returns_summary_for_called_event():
     assert result["when"]
     assert result["what_it_did"]["event"] == "normalize"
     assert result["what_it_did"]["status"] == "ok"
+
+
+def test_audit_logger_emits_a_verifiable_hash_chain(tmp_path):
+    database = tmp_path / "audit.db"
+    logger = AuditLogger(
+        AuditConfig(
+            enabled=True,
+            backend="sqlite",
+            db_path=str(database),
+            purge_on_start=False,
+        )
+    )
+
+    logger.emit(event="first", trace_id="trace-1")
+    logger.emit(event="second", trace_id="trace-2")
+    logger._backend.conn.close()
+
+    assert verify_chain(str(database)) == (True, "chain intact")
 
 
 def test_database_backend_factory_builds_native_backends():

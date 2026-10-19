@@ -48,8 +48,7 @@ from typing import Iterable
 # ---------------------------------------------------------------------------
 # Character tables
 # ---------------------------------------------------------------------------
-# These are the DEFAULTS. Developers can override any table via
-# `config.rules.arabic_rules_path` (see `dictionary.py` for the loader).
+# These are the default character conversion tables.
 
 ALEF_FORMS: dict[str, str] = {
     "\u0623": "\u0627",   # أ  -> ا

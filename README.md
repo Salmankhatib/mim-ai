@@ -137,6 +137,14 @@ Built on top of Microsoft Presidio with native Moroccan recognizers:
 - **Moroccan phone numbers** — all mobile and fixed-line formats
 - Fully configurable per-entity operators: `replace`, `mask`, `hash`, `redact`
 
+Presidio requires the English spaCy model. Install it after `mim-ai` and before using the anonymizer:
+
+```bash
+python -m spacy download en_core_web_lg
+```
+
+There is no automatic regex-only fallback. See the [anonymizer setup guide](docs/anonymizer/README.md) for details.
+
 ---
 
 ## 📜 Compliance — Law 09-08 & ISO 42001

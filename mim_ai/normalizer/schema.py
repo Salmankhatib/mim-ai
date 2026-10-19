@@ -16,8 +16,6 @@ class CleaningConfig:
     """Layer 1 toggles."""
     preserve_urls: bool = True
     strip_tatweel: bool = True
-    strip_mentions: bool = False
-    strip_hashtags: bool = False
     strip_urls: bool = False
 
     def __post_init__(self) -> None:
@@ -39,7 +37,6 @@ class RulesConfig:
     # Developer-supplied overrides (paths to YAML). Both optional.
     arabizi_dict_path: str | None = None
     skip_words_path: str | None = None
-    arabic_rules_path: str | None = None
 
 
 @dataclass
@@ -71,9 +68,8 @@ class NormalizerConfig:
             cfg.cleaning.preserve_urls = bool(raw["preserve_urls"])
             cfg.cleaning.strip_urls = not cfg.cleaning.preserve_urls
 
-        for key in ("strip_tatweel", "strip_mentions", "strip_hashtags"):
-            if key in raw:
-                setattr(cfg.cleaning, key, bool(raw[key]))
+        if "strip_tatweel" in raw:
+            cfg.cleaning.strip_tatweel = bool(raw["strip_tatweel"])
 
         rules_cfg = raw.get("rules") if isinstance(raw.get("rules"), dict) else {}
         if rules_cfg:
@@ -89,7 +85,6 @@ class NormalizerConfig:
             "normalize_digits",
             "arabizi_dict_path",
             "skip_words_path",
-            "arabic_rules_path",
         ):
             if key in raw:
                 setattr(cfg.rules, key, raw[key])

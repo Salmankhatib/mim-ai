@@ -3,8 +3,6 @@ normalizer:
   cleaning:
     preserve_urls: true
     strip_tatweel: true
-    strip_mentions: false
-    strip_hashtags: false
     strip_urls: false
   rules:
     unify_alef: true
@@ -14,7 +12,6 @@ normalizer:
     normalize_digits: true
     arabizi_dict_path: ../../darija/arabizi.yaml
     skip_words_path: ../../darija/skip_words.yaml
-    arabic_rules_path: ../../mim_ai/normalizer/data/arabic_rules.yaml
 
 anonymizer:
   enabled: true
