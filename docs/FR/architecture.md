@@ -26,7 +26,6 @@ Il contient :
 
 - couche de nettoyage
 - couche de règles Darija
-- couche optionnelle de raffinement LLM
 
 ### 3. Chatbot
 

@@ -26,7 +26,6 @@ It contains:
 
 - cleaning layer
 - rule-based Darija layer
-- optional LLM refinement layer
 
 ### 3. Chatbot
 
