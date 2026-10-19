@@ -61,7 +61,7 @@ A small Python SDK that gives Moroccan developers a **drop-in pipeline** for Dar
 pip install mim-ai
 ```
 
-Optional extras for voice/media work:
+Microphone and speaker support are included in the standard install. Install the optional `voice` extra only if you also need decoding for non-WAV speech formats:
 
 ```bash
 pip install "mim-ai[voice]"
@@ -97,7 +97,8 @@ if mim.config.chatbot.enabled and os.getenv(mim.config.chatbot.llm_api_key_env):
     reply = mim.chat("salam, chkoun nta?", session_id="user-42")
     print(reply.text)
 
-# Voice pipeline: records → transcribes → chats → speaks
+# Voice records from the default microphone until speech ends, then replies aloud.
+# Set the STT/TTS API credentials from config.yaml before enabling this call.
 # voice_reply = mim.listen_and_reply(session_id="user-42")
 ```
 

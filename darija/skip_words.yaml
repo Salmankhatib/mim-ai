@@ -6,7 +6,6 @@
 
 - "livraison"    # French, but starts with "li" like many Arabizi words
 - "salamander"   # English word that collides with "salam"
-- "bghit"        # UNLESS you want this normalized — leave out if so
 
 # French — articles, pronouns, possessives, common verbs
 - "le" 
@@ -128,12 +127,9 @@
 - "please"
 
 # Shared / ambiguous — when in doubt, skip
-- "casa" 
 - "riz" 
-- "souk" 
 - "bar" 
 - "bac" 
 - "taxi" 
 - "bus" 
 - "metro"
-- "rabat"

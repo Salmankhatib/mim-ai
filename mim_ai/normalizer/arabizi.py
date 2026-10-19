@@ -61,13 +61,19 @@ class ArabiziDictionary:
     @staticmethod
     def _variant_table_from_data(data: dict | list) -> dict[str, str]:
         entries: list[dict] = []
+        arabizi_to_arabic: dict[str, str] = {}
         if isinstance(data, list):
             entries = [item for item in data if isinstance(item, dict)]
         elif isinstance(data, dict):
             if isinstance(data.get("entries"), list):
                 entries = [item for item in data["entries"] if isinstance(item, dict)]
-            else:
+            elif "entries" not in data:
                 entries = [data]
+            if isinstance(data.get("arabizi_to_arabic"), dict):
+                arabizi_to_arabic = {
+                    str(key): str(value)
+                    for key, value in data["arabizi_to_arabic"].items()
+                }
 
         table: dict[str, str] = {}
         for entry in entries:
@@ -97,6 +103,7 @@ class ArabiziDictionary:
                     else:
                         table[variant_text] = str(canonical_arabizi) if canonical_arabizi is not None else str(canonical_arabic)
 
+        table.update(arabizi_to_arabic)
         return {ArabiziDictionary.normalize_key(k): str(v) for k, v in table.items() if k}
 
     def lookup(self, token: str) -> str | None:
@@ -104,12 +111,16 @@ class ArabiziDictionary:
         key = self.normalize_key(token)
         if not key:
             return None
-        if self.is_skipped(key):
+        starts_with_arabizi_digit = bool(re.match(r"^\d", str(token).strip()))
+        if self.is_skipped(key) and not starts_with_arabizi_digit:
             return None
         return self._table.get(key)
 
     def is_skipped(self, token: str) -> bool:
         """True if the token is on the fr/en whitelist."""
+        # A numeric prefix marks Arabizi, even if removing it collides with a French word.
+        if re.match(r"^\d", str(token).strip()):
+            return False
         return self.normalize_key(token) in self._skip
 
     @staticmethod

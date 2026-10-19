@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import mimetypes
 import os
-from email.generator import BytesGenerator
 from io import BytesIO
 from typing import Any
 from urllib import request
@@ -38,35 +37,6 @@ def _headers(config: Any, *, content_type: str | None = None) -> dict[str, str]:
     if content_type:
         headers["Content-Type"] = content_type
     return headers
-
-
-def _json_request(url: str, payload: dict[str, Any], config: Any) -> Any:
-    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    req = request.Request(
-        url,
-        data=data,
-        headers={**_headers(config, content_type="application/json"), "Accept": "application/json"},
-        method="POST",
-    )
-    try:
-        with request.urlopen(req, timeout=(getattr(config, "timeout_ms", 20000) / 1000) or 20) as resp:
-            raw = resp.read()
-            headers = getattr(resp, "headers", {})
-            content_type = None
-            if hasattr(headers, "get_content_type"):
-                content_type = headers.get_content_type()
-            elif isinstance(headers, dict):
-                content_type = headers.get("Content-Type")
-    except Exception as exc:  # pragma: no cover - transport dependent
-        raise APIError(f"HTTP request failed for {url}: {exc}") from exc
-    if not raw:
-        return {}
-    if content_type and content_type.startswith("audio/"):
-        return raw
-    try:
-        return json.loads(raw.decode("utf-8"))
-    except json.JSONDecodeError:
-        return {"raw": raw}
 
 
 def _multipart_payload(fields: dict[str, Any], boundary: str) -> bytes:
@@ -131,14 +101,6 @@ def speak(config: Any, text: str) -> tuple[bytes, str]:
         "voice": getattr(config, "voice", "nova"),
         "response_format": fmt,
     }
-    result = _json_request(url, payload, config)
-    if isinstance(result, (bytes, bytearray)):
-        return bytes(result), f"audio/{fmt if fmt != 'pcm' else 'pcm'}"
-    if isinstance(result, dict) and isinstance(result.get("raw"), (bytes, bytearray)):
-        return bytes(result["raw"]), f"audio/{fmt if fmt != 'pcm' else 'pcm'}"
-
-    # Some providers return the audio bytes directly via a raw response body,
-    # not a JSON object.
     req = request.Request(
         url,
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
@@ -150,11 +112,21 @@ def speak(config: Any, text: str) -> tuple[bytes, str]:
             raw = resp.read()
             headers = getattr(resp, "headers", {})
             if hasattr(headers, "get_content_type"):
-                mime = headers.get_content_type() or f"audio/{fmt if fmt != 'pcm' else 'pcm'}"
+                content_type = headers.get_content_type()
             elif isinstance(headers, dict):
-                mime = headers.get("Content-Type") or f"audio/{fmt if fmt != 'pcm' else 'pcm'}"
+                content_type = headers.get("Content-Type")
             else:
-                mime = f"audio/{fmt if fmt != 'pcm' else 'pcm'}"
-            return raw, mime
+                content_type = None
     except Exception as exc:  # pragma: no cover
         raise APIError(f"Speech request failed: {exc}") from exc
+
+    if not raw:
+        raise APIError("Speech endpoint returned an empty audio response")
+    fallback_mime = f"audio/{fmt if fmt != 'pcm' else 'pcm'}"
+    if not content_type or content_type == "application/octet-stream":
+        content_type = fallback_mime
+    if not content_type.startswith("audio/"):
+        raise APIError(
+            f"Speech endpoint returned unexpected content type: {content_type}"
+        )
+    return raw, content_type

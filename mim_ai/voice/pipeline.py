@@ -35,6 +35,7 @@ class VoiceReply:
     trace_id:    str = ""
     duration_ms: int = 0
     tool_calls:  list[dict] = field(default_factory=list)
+    status:       str = "ok"
 
 
 class VoicePipeline:
@@ -69,15 +70,22 @@ class VoicePipeline:
         audio_in = record_until_silence(
             self.cfg.audio, self.cfg.vad,
             max_seconds=self.cfg.max_record_seconds,
-            silence_timeout_ms=self.cfg.silence_timeout_ms,
         )
         if audio_in is None or len(audio_in) == 0:
-            return VoiceReply(trace_id=trace_id)
+            return VoiceReply(
+                trace_id=trace_id,
+                duration_ms=int((time.perf_counter() - t0) * 1000),
+                status="no_speech",
+            )
 
         # 2. Transcribe
         transcript = self.stt.transcribe(audio_in, self.cfg.audio.sample_rate)
         if not transcript:
-            return VoiceReply(trace_id=trace_id)
+            return VoiceReply(
+                trace_id=trace_id,
+                duration_ms=int((time.perf_counter() - t0) * 1000),
+                status="no_transcript",
+            )
 
         # 3. Normalize
         if self.normalizer and self.cfg.use_normalizer:

@@ -4,6 +4,22 @@
 
 The voice stack handles transcription, optional normalization, intent detection, conversation, and speech output.
 
+## Quick start
+
+Microphone and speaker I/O use the default devices and are included with `pip install mim-ai`. Set the provider API keys from `stt.api_key_env`, `tts.api_key_env`, and `chatbot.llm_api_key_env` in your environment, then enable the voice config:
+
+```python
+from mim_ai import Mim
+
+app = Mim.from_config("config.yaml")
+reply = app.listen_and_reply(session_id="demo")
+print(reply.transcript, reply.reply_text)
+```
+
+Capture uses RMS energy VAD. `voice.vad.threshold` is a normalized RMS amplitude (default `0.015`); `min_speech_ms` filters short transients, `min_silence_ms` ends an utterance, `pre_roll_ms` keeps its onset, and `start_timeout_ms` returns without calling STT if no speech is detected (`reply.status == "no_speech"`). `max_record_seconds` caps recording length. This is threshold-based, not a speech classifier; raise the threshold in noisy rooms.
+
+If no microphone or speaker is available, audio I/O raises an `AudioError` rather than sending fabricated silence or silently skipping playback. On Linux, a PortAudio system library may also be required by the host OS.
+
 ## Why it matters
 
 Voice is one of the most human ways to interact with an app, especially in call-center or field-service contexts.
@@ -25,6 +41,9 @@ print(reply.reply_text)
 - `voice.use_normalizer`
 - `voice.use_intents`
 - `voice.use_audit_log`
+- `voice.max_record_seconds`
+- `voice.vad.*`
+- `voice.audio.*`
 - `stt.*`
 - `tts.*`
 

@@ -43,15 +43,18 @@ voice:
   use_audit_log: true
   vad:
     enabled: true
-    threshold: 0.5
-    min_silence_ms: 500
+    threshold: 0.015
+    min_silence_ms: 700
+    start_timeout_ms: 10000
+    pre_roll_ms: 200
+    frame_ms: 20
+    min_speech_ms: 100
   audio:
     input_device: null
     output_device: null
     sample_rate: 16000
     chunk_ms: 32
   max_record_seconds: 30
-  silence_timeout_ms: 1500
 
 intents:
   enabled: true

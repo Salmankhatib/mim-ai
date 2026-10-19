@@ -3,6 +3,12 @@
 # Only Darija words are listed here. French/English words stay untouched
 # and should be placed in the skip_words configuration when needed.
 
+arabizi_to_arabic:
+  salam: "سلام"
+  wa7ed: "واحد"
+  "3la": "على"
+  ekher: "الآخر"
+
 entries:
   - canonical_arabizi: "bghit"
     canonical_arabic: "بغيت"

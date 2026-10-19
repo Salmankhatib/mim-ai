@@ -142,10 +142,8 @@ Default operators are `CIN_MA: replace` → `[CIN_MA]` (brackets, from `_operato
 
 
 ## 6. Priority fix list
-1. `verify_chain`: exclude `seq` from the recomputed body (+ add a round-trip test: emit → verify → `True`). *Half a day.*
-2. Purge Darija words from `skip_words.yaml`; expand dictionary to cover README example; make README/test/output agree. *1 day.*
+2. [x] Purge Darija words from `skip_words.yaml`; expand dictionary to cover README example; make README/test/output agree.
 3. README anonymizer output format ↔ default operators. *1 hour.*
-4. Anonymizer: document/install spaCy model, or regex-only fallback. *1–2 days.*
-5. Voice: real energy-VAD or label it `preview` in README. *2–3 days.*
-6. `_http.speak` double-POST guard. *2 hours.*
-7. `git rm -r __pycache__`, prune dead config, add CI workflow running pytest. *1 day.*
+5. [x] Voice: add real energy-VAD and document plug-and-play setup.
+
+6. [x] `_http.speak` double-POST guard.

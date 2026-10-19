@@ -28,8 +28,20 @@ class AudioConfig:
 class VADConfig:
     """Voice activity detection parameters."""
     enabled: bool = True
-    threshold: float = 0.5
-    min_silence_ms: int = 500
+    threshold: float = 0.015
+    min_silence_ms: int = 700
+    start_timeout_ms: int = 10000
+    pre_roll_ms: int = 200
+    frame_ms: int = 20
+    min_speech_ms: int = 100
+
+    def __post_init__(self) -> None:
+        if not 0 < self.threshold <= 1:
+            raise ValueError("voice.vad.threshold must be greater than 0 and at most 1")
+        if min(self.min_silence_ms, self.start_timeout_ms, self.frame_ms, self.min_speech_ms) <= 0:
+            raise ValueError("voice.vad durations must be positive")
+        if self.pre_roll_ms < 0:
+            raise ValueError("voice.vad.pre_roll_ms cannot be negative")
 
 
 @dataclass
@@ -43,7 +55,14 @@ class VoiceSection:
     vad: VADConfig = field(default_factory=VADConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
     max_record_seconds: int = 30
-    silence_timeout_ms: int = 1500
+    silence_timeout_ms: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.max_record_seconds <= 0:
+            raise ValueError("voice.max_record_seconds must be positive")
+        if self.silence_timeout_ms is not None:
+            self.vad.min_silence_ms = self.silence_timeout_ms
+            self.vad.__post_init__()
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any] | None) -> "VoiceSection":
@@ -58,11 +77,16 @@ class VoiceSection:
             for key, value in vad_cfg.items():
                 if hasattr(cfg.vad, key):
                     setattr(cfg.vad, key, value)
+        if "silence_timeout_ms" in raw and "min_silence_ms" not in vad_cfg:
+            cfg.vad.min_silence_ms = raw["silence_timeout_ms"]
+        cfg.vad.__post_init__()
         audio_cfg = raw.get("audio") if isinstance(raw.get("audio"), dict) else {}
         if audio_cfg:
             for key, value in audio_cfg.items():
                 if hasattr(cfg.audio, key):
                     setattr(cfg.audio, key, value)
+        if "silence_timeout_ms" in raw:
+            cfg.silence_timeout_ms = raw["silence_timeout_ms"]
         return cfg
 
 

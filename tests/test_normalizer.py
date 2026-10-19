@@ -36,7 +36,7 @@ class TestLayer1Safety:
 
     def test_whitespace_collapsed(self, norm):
         out = norm.normalize("salam    kho    labas")
-        assert out == "salam kho labas"
+        assert out == "سلام kho labas"
 
     def test_newlines_preserved(self, norm):
         out = norm.normalize("salam\nlabas")
@@ -153,6 +153,10 @@ class TestCodeSwitching:
     def test_canonical_darija_variant_bank(self, norm):
         assert norm.normalize("b8it nchouf daaba") == "bghit nchouf daba"
         assert norm.normalize("بغيت نشوف دابة") == "بغيت نشوف دابا"
+
+    def test_readme_darija_example_normalizes_to_arabic(self, norm):
+        assert norm.normalize("salam wa7ed 3la ekher") == "سلام واحد على الآخر"
+        assert norm.normalize("la vie est belle") == "la vie est belle"
 
     def test_darija_french_mix(self, norm):
         text = "salam, ça va? bghit n3ref wa7ed chi haja"
@@ -328,6 +332,6 @@ def test_readme_local_dev_flow_works_without_external_llm():
     normalized = app.normalizer.normalize("salam wa7ed 3la ekher")
     result = anonymizer.anonymize("Mon CIN est AB58075 et mon tel est 0612345678")
 
-    assert "salam" in normalized
+    assert normalized == "سلام واحد على الآخر"
     assert any(item["type"] == "CIN_MA" for item in result.entities_found)
     assert any(item["type"] == "PHONE_MA" for item in result.entities_found)
