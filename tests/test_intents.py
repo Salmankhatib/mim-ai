@@ -2,6 +2,7 @@ import pytest
 
 from mim_ai.chatbot.chatbot import Chatbot
 from mim_ai.chatbot.config import ChatbotConfig
+from mim_ai.chatbot.llm import LLMError
 from mim_ai.intents import Intent, IntentRegistry
 from mim_ai.normalizer.schema import NormalizerConfig
 
@@ -91,6 +92,47 @@ def test_chatbot_uses_intent_registry_when_enabled():
 
     assert reply.intent == "get_weather"
     assert reply.intent_score >= 0.0
+
+
+def test_chatbot_llm_error_is_not_stored_as_successful_reply():
+    class FakeProvider:
+        def chat(self, messages, tools=None):
+            raise LLMError("provider down")
+
+    class FakeAudit:
+        def __init__(self):
+            self.events = []
+
+        def emit(self, **kwargs):
+            self.events.append(kwargs)
+
+    hist = {}
+
+    class FakeHistory:
+        def get(self, session_id):
+            return hist.get(session_id, [])
+
+        def append(self, session_id, message):
+            hist.setdefault(session_id, []).append(message)
+
+        def clear(self, session_id):
+            hist.pop(session_id, None)
+
+    audit = FakeAudit()
+    bot = Chatbot(
+        ChatbotConfig(enabled=True, use_intents=False, enable_tools=False),
+        provider=FakeProvider(),
+        history=FakeHistory(),
+        audit=audit,
+    )
+
+    reply = bot.chat("bonjour", session_id="s_err")
+
+    assert reply.text == ""
+    assert hist["s_err"] == [{"role": "user", "content": "bonjour"}]
+    assert audit.events[0]["status"] == "error"
+    assert audit.events[0]["output_text"] == ""
+    assert audit.events[0]["extra"]["error"] == "provider down"
 
 
 def test_normalizer_respects_disabled_flag():

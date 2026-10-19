@@ -227,6 +227,7 @@ class Chatbot:
         tool_calls_made: list[dict] = []
         final_text = ""
         usage: dict = {}
+        error_message: str | None = None
 
         try:
             for _ in range(self.config.max_tool_calls):
@@ -261,7 +262,8 @@ class Chatbot:
                 final_text = "(tool call limit reached)"
 
         except LLMError as e:
-            final_text = f"(LLM error: {e})"
+            error_message = str(e)
+            final_text = ""
 
         # --- 5. Persist history --------------------------------------
         self.history.append(session_id, {"role": "user",      "content": user_text})
@@ -272,6 +274,17 @@ class Chatbot:
 
         # --- 5. Audit log --------------------------------------------
         if self.audit is not None:
+            status = "ok" if final_text else "error"
+            extra = {
+                "session_id":  session_id,
+                "model":       self.config.llm_model,
+                "intent":      intent_name,
+                "intent_score": intent_score,
+                "tool_calls":  [t["name"] for t in tool_calls_made],
+                "usage":       usage,
+            }
+            if error_message is not None:
+                extra["error"] = error_message
             self.audit.emit(
                 event="chat",
                 trace_id=trace_id,
@@ -279,15 +292,8 @@ class Chatbot:
                 input_text=message,
                 output_text=final_text,
                 duration_ms=duration_ms,
-                status="ok" if final_text else "error",
-                extra={
-                    "session_id":  session_id,
-                    "model":       self.config.llm_model,
-                    "intent":      intent_name,
-                    "intent_score": intent_score,
-                    "tool_calls":  [t["name"] for t in tool_calls_made],
-                    "usage":       usage,
-                },
+                status=status,
+                extra=extra,
             )
 
         return ChatReply(
