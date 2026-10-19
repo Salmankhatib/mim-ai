@@ -94,11 +94,15 @@ def transcribe(config: Any, wav_bytes: bytes) -> str:
     boundary = "----mim-ai-boundary"
     file_like = BytesIO(wav_bytes)
     file_like.name = "audio.wav"
-    payload = _multipart_payload({"file": file_like, "model": getattr(config, "model", "whisper-1")}, boundary)
+    fields = {
+        "file": file_like,
+        "model": getattr(config, "model", "whisper-1"),
+    }
+    if getattr(config, "language", None):
+        fields["language"] = str(config.language)
+    payload = _multipart_payload(fields, boundary)
     headers = _headers(config)
     headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
-    if getattr(config, "language", None):
-        headers["X-Language"] = str(config.language)
     req = request.Request(url, data=payload, headers=headers, method="POST")
     try:
         with request.urlopen(req, timeout=(getattr(config, "timeout_ms", 20000) / 1000) or 20) as resp:

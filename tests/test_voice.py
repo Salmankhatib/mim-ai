@@ -4,7 +4,7 @@ from io import BytesIO
 import numpy as np
 import pytest
 
-from mim_ai._http import speak
+from mim_ai._http import speak, transcribe
 from mim_ai.chatbot.chatbot import ChatReply
 from mim_ai.normalizer.arabizi import ArabiziDictionary
 from mim_ai.normalizer.schema import RulesConfig
@@ -75,3 +75,46 @@ def test_speak_sets_response_format_and_only_posts_once(monkeypatch):
     assert mime == "audio/wav"
     assert captured["payload"]["response_format"] == "wav"
     assert out.startswith(b"RIFF")
+
+
+def test_transcribe_uses_language_form_field_not_x_language_header(monkeypatch):
+    captured = {}
+
+    class FakeResponse:
+        headers = {"Content-Type": "application/json"}
+
+        def read(self):
+            return b'{"text": "salut"}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        captured["url"] = req.full_url
+        captured["headers"] = dict(req.headers)
+        captured["body"] = req.data
+        return FakeResponse()
+
+    monkeypatch.setattr("mim_ai._http.request.urlopen", fake_urlopen)
+
+    cfg = type(
+        "Cfg",
+        (),
+        {
+            "model": "whisper-1",
+            "base_url": "https://example.test/v1",
+            "api_key_env": "OPENAI_API_KEY",
+            "timeout_ms": 1000,
+            "language": "ar",
+        },
+    )()
+
+    out = transcribe(cfg, b"fake-audio")
+
+    assert out == "salut"
+    assert "X-Language" not in captured["headers"]
+    assert b'name="language"' in captured["body"]
+    assert b"ar" in captured["body"]
