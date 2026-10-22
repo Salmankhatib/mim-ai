@@ -22,7 +22,7 @@ Config-first, model-agnostic toolkit for Moroccan Darija AI.
 """
 from __future__ import annotations
 
-from .config import load_config, MimConfig, write_default_config
+from .config import MimConfig, load_config, write_default_config
 
 __version__ = "0.1.0"
 
@@ -113,10 +113,10 @@ class Mim:
             c = self.config.chatbot
             self._chatbot = Chatbot.from_config(
                 c,
-                normalizer=self.normalizer,
-                audit=self.audit,
-                normalizer_log=self.normalizer_log,
-                intents=self.intents,
+                normalizer=self.normalizer if c.use_normalizer else None,
+                audit=self.audit if c.use_audit_log else None,
+                normalizer_log=self.normalizer_log if c.use_normalizer_log else None,
+                intents=self.intents if c.use_intents else None,
             )
         return self._chatbot
 
@@ -124,11 +124,15 @@ class Mim:
     def voice(self):
         if self._voice is None and self.config.voice.enabled:
             from .voice import VoicePipeline
+            v = self.config.voice
             self._voice = VoicePipeline(
-                self.config.voice, self.config.stt, self.config.tts,
-                chatbot=self.chatbot, intents=self.intents,
-                audit=self.audit, normalizer=self.normalizer,
-                normalizer_log=self.normalizer_log,
+                v, self.config.stt, self.config.tts,
+                chatbot=self.chatbot if v.use_chatbot else None,
+                intents=self.intents if v.use_intents else None,
+                audit=self.audit if v.use_audit_log else None,
+                normalizer=self.normalizer if v.use_normalizer else None,
+                normalizer_log=self.normalizer_log if v.use_normalizer else None,
+                intent_threshold=self.config.intents.threshold,
             )
         return self._voice
 
@@ -141,6 +145,11 @@ class Mim:
         if self.chatbot is None:
             raise RuntimeError("chatbot.enabled is false in your config")
         return self.chatbot.chat(message, session_id=session_id, user_ref=user_ref)
+
+    def anonymize(self, text: str):
+        """Anonymize text using the anonymizer settings in this Mim config."""
+        from .anonymizer import anonymize
+        return anonymize(text, config=self.config.anonymizer)
 
     def listen_and_reply(self, *, session_id: str = "default",
                          user_ref: str | None = None, play_audio: bool = True):

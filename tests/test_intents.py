@@ -195,10 +195,57 @@ def test_chatbot_llm_error_is_not_stored_as_successful_reply():
     reply = bot.chat("bonjour", session_id="s_err")
 
     assert reply.text == ""
+    assert reply.error == "provider down"
     assert hist["s_err"] == [{"role": "user", "content": "bonjour"}]
     assert audit.events[0]["status"] == "error"
     assert audit.events[0]["output_text"] == ""
     assert audit.events[0]["extra"]["error"] == "provider down"
+
+
+def test_chatbot_component_flags_override_injected_integrations():
+    calls = {"normalizer": 0, "normalizer_log": 0, "audit": 0}
+
+    class FakeNormalizer:
+        def normalize(self, message, *, return_report=False):
+            calls["normalizer"] += 1
+            return "changed", type("Report", (), {})()
+
+    class FakeLogger:
+        def emit(self, **kwargs):
+            calls["normalizer_log"] += 1
+
+    class FakeAudit:
+        def emit(self, **kwargs):
+            calls["audit"] += 1
+
+    class FakeProvider:
+        def __init__(self):
+            self.messages = None
+
+        def chat(self, messages, tools=None):
+            self.messages = messages
+            return type("Resp", (), {"content": "hello", "tool_calls": [], "usage": {}})()
+
+    provider = FakeProvider()
+    bot = Chatbot(
+        ChatbotConfig(
+            enabled=True,
+            use_normalizer=False,
+            use_normalizer_log=False,
+            use_audit_log=False,
+            use_intents=False,
+            enable_tools=False,
+        ),
+        provider=provider,
+        normalizer=FakeNormalizer(),
+        normalizer_log=FakeLogger(),
+        audit=FakeAudit(),
+    )
+
+    bot.chat("original message")
+
+    assert provider.messages[-1]["content"] == "original message"
+    assert calls == {"normalizer": 0, "normalizer_log": 0, "audit": 0}
 
 
 def test_normalizer_respects_disabled_flag():

@@ -3,7 +3,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/mim-ai.svg?color=brightgreen)](https://pypi.org/project/mim-ai/)
 [![Python versions](https://img.shields.io/pypi/pyversions/mim-ai.svg)](https://pypi.org/project/mim-ai/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-92%20passed-brightgreen)](./tests/)
+[![Tests](https://img.shields.io/badge/tests-139%20passed-brightgreen)](./tests/)
 [![Made in Morocco](https://img.shields.io/badge/Made%20in-Morocco%20🇲🇦-cc0000)](https://github.com/salmankhatib06/mim-ai)
 
 > **A config-first Python SDK for Moroccan Darija AI.**  
@@ -88,8 +88,7 @@ mim = Mim.from_config("config.yaml")
 normalized = mim.normalizer.normalize("salam wa7ed 3la ekher")
 print(normalized)  # salam wa7ed 3la ekher
 
-from mim_ai import anonymize
-redacted = anonymize("Mon CIN est AB58075 et mon tel est 0612345678")
+redacted = mim.anonymize("Mon CIN est AB58075 et mon tel est 0612345678")
 print(redacted.text)  # Mon CIN est <CIN_MA> et mon tel est <PHONE_MA>
 
 # Chat and voice require configured provider credentials and a reachable endpoint.

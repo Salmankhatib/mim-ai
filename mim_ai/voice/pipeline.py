@@ -45,6 +45,7 @@ class VoicePipeline:
         stt_cfg:    STTConfig,
         tts_cfg:    TTSConfig,
         chatbot=None, intents=None, audit=None, normalizer=None, normalizer_log=None,
+        intent_threshold: float = 0.55,
     ) -> None:
         self.cfg = voice_cfg
         self.enabled = voice_cfg.enabled
@@ -55,6 +56,7 @@ class VoicePipeline:
         self.audit = audit
         self.normalizer = normalizer
         self.normalizer_log = normalizer_log
+        self.intent_threshold = intent_threshold
 
     def listen_and_reply(
         self, *, session_id: str = "default",
@@ -107,7 +109,7 @@ class VoicePipeline:
         # 4. Intent
         intent_name, intent_score = None, 0.0
         if self.intents and self.cfg.use_intents:
-            m, s = self.intents.match_rule_based(transcript)
+            m, s = self.intents.match_rule_based(transcript, threshold=self.intent_threshold)
             if m:
                 intent_name, intent_score = m.name, s
 

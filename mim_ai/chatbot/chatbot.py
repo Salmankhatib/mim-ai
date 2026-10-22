@@ -83,6 +83,7 @@ class ChatReply:
     usage:        dict = field(default_factory=dict)
     intent:       str | None = None
     intent_score: float = 0.0
+    error:        str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -136,7 +137,7 @@ class Chatbot:
             return cls(config, **kwargs)
 
         # Auto-wire the normalizer if requested and not supplied.
-        if config.use_normalizer and kwargs.get("normalizer") is None:
+        if config.use_normalizer and "normalizer" not in kwargs:
             try:
                 from mim_ai.normalizer import Normalizer, NormalizerConfig
                 kwargs["normalizer"] = Normalizer.from_config(NormalizerConfig())
@@ -144,7 +145,7 @@ class Chatbot:
                 warnings.warn(f"Failed to initialize chatbot normalizer: {exc}", UserWarning)
 
         # Auto-wire intents if requested and not supplied.
-        if config.use_intents and kwargs.get("intents") is None:
+        if config.use_intents and "intents" not in kwargs:
             try:
                 from mim_ai.intents import IntentRegistry
                 registry = IntentRegistry()
@@ -156,14 +157,14 @@ class Chatbot:
                 warnings.warn(f"Failed to initialize chatbot intents: {exc}", UserWarning)
 
         # Auto-wire loggers if requested and not supplied.
-        if config.use_audit_log and kwargs.get("audit") is None:
+        if config.use_audit_log and "audit" not in kwargs:
             try:
                 from mim_ai.audit import AuditLogger, AuditConfig
                 kwargs["audit"] = AuditLogger(AuditConfig(enabled=True))
             except Exception as exc:            # noqa: BLE001
                 warnings.warn(f"Failed to initialize audit logger: {exc}", UserWarning)
 
-        if config.use_normalizer_log and kwargs.get("normalizer_log") is None:
+        if config.use_normalizer_log and "normalizer_log" not in kwargs:
             try:
                 from mim_ai.audit import NormalizerLogger, NormalizerLogConfig
                 kwargs["normalizer_log"] = NormalizerLogger(NormalizerLogConfig(enabled=True))
@@ -197,12 +198,12 @@ class Chatbot:
 
         # --- 1. Normalize the user message ---------------------------
         user_text = message
-        if self.normalizer is not None:
+        if self.config.use_normalizer and self.normalizer is not None:
             user_text, norm_report = self.normalizer.normalize(
                 message, return_report=True,
             )
             # Feed the normalizer log if wired.
-            if self.normalizer_log is not None:
+            if self.config.use_normalizer_log and self.normalizer_log is not None:
                 self.normalizer_log.emit(
                     trace_id=trace_id, user_ref=user_ref,
                     jargon_used=getattr(norm_report, "jargon_used", {}),
@@ -273,7 +274,7 @@ class Chatbot:
         duration_ms = int((time.perf_counter() - t0) * 1000)
 
         # --- 5. Audit log --------------------------------------------
-        if self.audit is not None:
+        if self.config.use_audit_log and self.audit is not None:
             status = "ok" if final_text else "error"
             extra = {
                 "session_id":  session_id,
@@ -304,6 +305,7 @@ class Chatbot:
             usage=usage,
             intent=intent_name,
             intent_score=intent_score,
+            error=error_message,
         )
 
     def close(self) -> None:

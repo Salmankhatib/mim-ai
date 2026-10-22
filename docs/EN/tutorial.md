@@ -34,7 +34,19 @@ print(clean)
 
 This is useful before sending user text to an LLM or a downstream workflow.
 
-## 4. Use the chatbot
+## 4. Anonymize sensitive text
+
+The `Mim` instance uses the anonymizer settings from the same config file:
+
+```python
+result = app.anonymize("My CIN is AB58075")
+print(result.text)
+```
+
+Presidio's English spaCy model must be installed before anonymization; see the
+[anonymizer setup guide](../anonymizer/README.md).
+
+## 5. Use the chatbot
 
 ```python
 reply = app.chat("salam, chkoun nta?", session_id="demo-user")
@@ -43,7 +55,7 @@ print(reply.text)
 
 This calls the configured LLM and uses the configured session history backend.
 
-## 5. Use the voice pipeline
+## 6. Use the voice pipeline
 
 ```python
 voice_reply = app.listen_and_reply(session_id="demo-user")
@@ -53,11 +65,11 @@ print(voice_reply.reply_text)
 
 This requires a real microphone input and a working STT/TTS provider config.
 
-## 6. Best practice
+## 7. Best practice
 
 Keep a single config file and change provider values there instead of changing code. This makes environment-specific deployments easy.
 
-## 7. Minimal app idea
+## 8. Minimal app idea
 
 A small app can be built with:
 

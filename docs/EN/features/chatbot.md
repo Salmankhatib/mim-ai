@@ -16,6 +16,8 @@ from mim_ai import Mim
 app = Mim.from_config("config.yaml")
 reply = app.chat("salam, chkoun nta?", session_id="demo")
 print(reply.text)
+if reply.error:
+    print(f"Chat request failed: {reply.error}")
 ```
 
 ## Config keys

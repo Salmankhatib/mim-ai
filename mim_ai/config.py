@@ -203,6 +203,8 @@ class MimConfig:
         intents_cfg = data.get("intents", {})
         if isinstance(intents_cfg, dict):
             cfg.intents = IntentConfig.from_mapping(intents_cfg)
+            if isinstance(chatbot_cfg, dict) and "intent_threshold" not in chatbot_cfg:
+                cfg.chatbot.intent_threshold = cfg.intents.threshold
 
         voice_cfg = data.get("voice", {})
         if isinstance(voice_cfg, dict):

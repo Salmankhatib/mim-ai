@@ -1,9 +1,19 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
 from .config import write_default_config
+
+
+def init_main() -> int:
+    parser = argparse.ArgumentParser(description="Create a MIM config file.")
+    parser.add_argument(
+        "path", nargs="?", default="config.yaml", help="Target config path"
+    )
+    args = parser.parse_args()
+    created = write_default_config(args.path, overwrite=False)
+    print(f"Config ready at {created}")
+    return 0
 
 
 def main() -> int:
@@ -14,7 +24,9 @@ def main() -> int:
         nargs="?",
         help="Create a default config file for a project.",
     )
-    parser.add_argument("path", nargs="?", default="config.yaml", help="Target config path")
+    parser.add_argument(
+        "path", nargs="?", default="config.yaml", help="Target config path"
+    )
     args = parser.parse_args()
 
     if args.command == "init":

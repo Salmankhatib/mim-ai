@@ -53,7 +53,7 @@ Documentation = "https://github.com/salmankhatib06/mim-ai/tree/main/docs/EN"
 Changelog = "https://github.com/salmankhatib06/mim-ai/blob/main/CHANGELOG.md"
 
 [project.scripts]
-mim-init = "mim_ai.config:write_default_config"
+mim-init = "mim_ai.__main__:init_main"
 
 [project.optional-dependencies]
 dev = [
@@ -98,6 +98,7 @@ include = ["mim_ai*"]
 [tool.setuptools.package-data]
 mim_ai = [
     "default_config.yaml",
+    "audit/schema.sql",
     "intents/*.yaml",
     "normalizer/data/*.yaml",
 ]
