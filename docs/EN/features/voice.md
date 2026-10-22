@@ -6,7 +6,13 @@ The voice stack handles transcription, optional normalization, intent detection,
 
 ## Quick start
 
-Microphone and speaker I/O use the default devices and are included with `pip install mim-ai`. Set the provider API keys from `stt.api_key_env`, `tts.api_key_env`, and `chatbot.llm_api_key_env` in your environment, then enable the voice config:
+Install voice support and its Python audio dependencies:
+
+```bash
+pip install "mim-ai[voice]"
+```
+
+Voice uses the default microphone and speaker devices. The host may also need audio system libraries (for example, PortAudio on Linux). Configure reachable STT/TTS endpoints in `config.yaml`, then set the API keys named by `stt.api_key_env` and `tts.api_key_env` in your environment. If the voice pipeline uses chat, also set `chatbot.llm_api_key_env`.
 
 ```python
 from mim_ai import Mim
@@ -18,7 +24,7 @@ print(reply.transcript, reply.reply_text)
 
 Capture uses RMS energy VAD. `voice.vad.threshold` is a normalized RMS amplitude (default `0.015`); `min_speech_ms` filters short transients, `min_silence_ms` ends an utterance, `pre_roll_ms` keeps its onset, and `start_timeout_ms` returns without calling STT if no speech is detected (`reply.status == "no_speech"`). `max_record_seconds` caps recording length. This is threshold-based, not a speech classifier; raise the threshold in noisy rooms.
 
-If no microphone or speaker is available, audio I/O raises an `AudioError` rather than sending fabricated silence or silently skipping playback. On Linux, a PortAudio system library may also be required by the host OS.
+If no microphone or speaker is available, audio I/O raises an `AudioError` rather than sending fabricated silence or silently skipping playback.
 
 ## Why it matters
 

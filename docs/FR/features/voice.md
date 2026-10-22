@@ -6,7 +6,13 @@ Le pipeline vocal gère la transcription, la normalisation optionnelle, la déte
 
 ## Démarrage rapide
 
-L’accès au microphone et aux haut-parleurs utilise les périphériques par défaut et est inclus dans `pip install mim-ai`. Définissez les clés API indiquées par `stt.api_key_env`, `tts.api_key_env` et `chatbot.llm_api_key_env` dans l’environnement, puis activez la configuration vocale :
+Installez le support vocal et ses dépendances audio Python :
+
+```bash
+pip install "mim-ai[voice]"
+```
+
+La voix utilise les périphériques microphone et haut-parleur par défaut. Le système peut également nécessiter des bibliothèques audio (par exemple PortAudio sous Linux). Configurez des endpoints STT/TTS accessibles dans `config.yaml`, puis définissez dans l’environnement les clés API indiquées par `stt.api_key_env` et `tts.api_key_env`. Si le pipeline vocal utilise le chatbot, définissez également `chatbot.llm_api_key_env`.
 
 ```python
 from mim_ai import Mim
@@ -18,7 +24,7 @@ print(reply.transcript, reply.reply_text)
 
 La capture utilise une détection VAD par énergie RMS. `voice.vad.threshold` est une amplitude RMS normalisée (valeur par défaut : `0.015`) ; `min_speech_ms` filtre les sons brefs, `min_silence_ms` termine une phrase, `pre_roll_ms` conserve son début, et `start_timeout_ms` évite l’appel STT si aucun son n’est détecté (`reply.status == "no_speech"`). `max_record_seconds` limite la durée. Cette méthode utilise un seuil, pas un classificateur vocal ; augmentez-le dans les environnements bruyants.
 
-En l’absence de microphone ou de haut-parleur, les opérations audio lèvent `AudioError` au lieu d’envoyer du silence artificiel ou d’ignorer l’échec. Sous Linux, une bibliothèque système PortAudio peut également être nécessaire.
+En l’absence de microphone ou de haut-parleur, les opérations audio lèvent `AudioError` au lieu d’envoyer du silence artificiel ou d’ignorer l’échec.
 
 ## Pourquoi c’est important
 

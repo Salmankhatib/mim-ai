@@ -104,6 +104,8 @@ class Chatbot:
         audit=None,               # mim_ai.audit.AuditLogger, optional
         normalizer_log=None,      # mim_ai.audit.NormalizerLogger, optional
         intents=None,
+        intent_strategy: str = "rule",
+        intent_prompt: str | None = None,
     ) -> None:
         self.config = config
         self.enabled = config.enabled
@@ -116,6 +118,13 @@ class Chatbot:
         self.normalizer_log = normalizer_log
         self.intents = intents
         self.intent_threshold = getattr(config, "intent_threshold", 0.55)
+        self.intent_strategy = intent_strategy
+        self.intent_prompt = intent_prompt or (
+            "Classify the user's message into one of the listed intents. "
+            "Return only JSON with the keys intent and confidence. "
+            "Use intent \"unknown\" when none fit.\n\n"
+            "Registered intents:\n{intents}"
+        )
         self.system_prompt = resolve_prompt(
             config.system_prompt,
             config.system_prompt_extra,
@@ -213,24 +222,31 @@ class Chatbot:
                     rules_applied=getattr(norm_report, "rule_applications", 0),
                 )
 
-        # --- 2. Match the intent when enabled ------------------------
         intent_name = None
         intent_score = 0.0
-        if self.config.use_intents and self.intents is not None:
-            match, score = self.intents.match_rule_based(user_text, threshold=self.intent_threshold)
-            if match is not None:
-                intent_name, intent_score = match.name, float(score)
-
-        # --- 3. Build the message list -------------------------------
         messages = self._build_messages(session_id, user_text)
 
-        # --- 4. Tool-use loop ----------------------------------------
         tool_calls_made: list[dict] = []
         final_text = ""
         usage: dict = {}
         error_message: str | None = None
 
         try:
+            if self.config.use_intents and self.intents is not None:
+                match, score = self.intents.match_rule_based(
+                    user_text, threshold=self.intent_threshold
+                )
+                if self.intent_strategy == "llm":
+                    match, score = self.intents.match_llm(
+                        user_text, self.provider, self.intent_prompt
+                    )
+                elif self.intent_strategy == "hybrid" and match is None:
+                    match, score = self.intents.match_llm(
+                        user_text, self.provider, self.intent_prompt
+                    )
+                if match is not None:
+                    intent_name, intent_score = match.name, float(score)
+
             for _ in range(self.config.max_tool_calls):
                 tool_schemas = (
                     self.registry.specs()

@@ -4,10 +4,10 @@ The anonymizer module gives the project a config-first PII redaction layer built
 
 ## Install the spaCy model
 
-Presidio's built-in recognizers require the English spaCy model. Install it after installing `mim-ai` and before the first anonymization call:
+The anonymizer is an optional extra. Presidio's built-in recognizers also require the English spaCy model. Install both before the first anonymization call:
 
 ```bash
-pip install mim-ai
+pip install "mim-ai[anonymizer]"
 python -m spacy download en_core_web_lg
 ```
 

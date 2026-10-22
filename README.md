@@ -61,10 +61,14 @@ A small Python SDK that gives Moroccan developers a **drop-in pipeline** for Dar
 pip install mim-ai
 ```
 
-Microphone and speaker support are included in the standard install. Install the optional `voice` extra only if you also need decoding for non-WAV speech formats:
+The base install supports the normalizer and config-driven text workflows. Install optional extras only for the features you use:
 
 ```bash
+# Microphone/speaker I/O and optional non-WAV audio decoding
 pip install "mim-ai[voice]"
+
+# PII anonymization (also requires the spaCy model described below)
+pip install "mim-ai[anonymizer]"
 ```
 
 ### 2. Generate Your Config
@@ -73,33 +77,37 @@ pip install "mim-ai[voice]"
 mim-init
 ```
 
-This creates a `config.yaml` in your project directory with all subsystems pre-configured and commented.
+This creates a default `config.yaml` in the current project directory. Review its endpoint, model, and enable/disable settings before using remote or optional features.
 
 ### 3. Use It
 
 ```python
-import os
 from mim_ai import Mim
 
-# Initialize from config
+# Load the config generated above. Components initialize only when used.
 mim = Mim.from_config("config.yaml")
 
-# Local-safe flow: normalization + anonymization work without external services.
+# Normalization works with the base install; it does not call a model endpoint.
 normalized = mim.normalizer.normalize("salam wa7ed 3la ekher")
 print(normalized)  # salam wa7ed 3la ekher
 
-redacted = mim.anonymize("Mon CIN est AB58075 et mon tel est 0612345678")
-print(redacted.text)  # Mon CIN est <CIN_MA> et mon tel est <PHONE_MA>
-
-# Chat and voice require configured provider credentials and a reachable endpoint.
-if mim.config.chatbot.enabled and os.getenv(mim.config.chatbot.llm_api_key_env):
-    reply = mim.chat("salam, chkoun nta?", session_id="user-42")
-    print(reply.text)
-
-# Voice records from the default microphone until speech ends, then replies aloud.
-# Set the STT/TTS API credentials from config.yaml before enabling this call.
-# voice_reply = mim.listen_and_reply(session_id="user-42")
+mim.shutdown()
 ```
+
+To use chat, set the API key named by `chatbot.llm_api_key_env` in your environment and configure `chatbot.llm_endpoint` and `chatbot.llm_model` in `config.yaml`. The default chatbot endpoint is MNTRA's OpenAI-compatible API and expects `MNTRA_API_KEY`; compatible endpoints that do not require authentication can leave the key unset.
+
+```python
+from mim_ai import Mim
+
+mim = Mim.from_config("config.yaml")
+reply = mim.chat("salam, chkoun nta?", session_id="user-42")
+print(reply.text)
+mim.shutdown()
+```
+
+Voice requires the `voice` extra, an available microphone/speaker (and any OS audio libraries required by `sounddevice`), plus reachable STT/TTS endpoints. The default STT/TTS configs use `OPENAI_API_KEY`; set the environment variables configured by `stt.api_key_env` and `tts.api_key_env` before calling `listen_and_reply()`. If voice also uses chat, configure that endpoint's key as well. A TTS endpoint can be disabled when only a transcript or text reply is needed.
+
+Anonymization requires the `anonymizer` extra and its spaCy model; it is not available from the base install alone. See the [anonymizer setup guide](docs/anonymizer/README.md).
 
 ---
 

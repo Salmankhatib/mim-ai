@@ -43,7 +43,7 @@ def _load_sounddevice():
     except (ImportError, OSError) as exc:
         raise AudioError(
             "Microphone and speaker I/O requires sounddevice. "
-            "Install it with: pip install mim-ai"
+            'Install it with: pip install "mim-ai[voice]"'
         ) from exc
     return sounddevice
 

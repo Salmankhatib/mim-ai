@@ -12,12 +12,34 @@ custom database layer.
 from __future__ import annotations
 
 import json
+import os
+import re
 import sqlite3
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
+
+_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _validate_sql_identifier(table: str) -> str:
+    if not _IDENTIFIER_RE.fullmatch(table):
+        raise ValueError(f"Invalid SQL table name: {table!r}")
+    return table
+
+
+def _database_url(config: Any) -> str | None:
+    url = getattr(config, "database_url", None)
+    env_name = getattr(config, "database_url_env", None)
+    if env_name:
+        url = os.environ.get(env_name, url)
+        if not url:
+            raise ValueError(
+                f"Database URL is missing; set environment variable {env_name!r}"
+            )
+    return url
 
 
 class LogStorageAdapter:
@@ -50,7 +72,7 @@ class SQLiteBackend(LogStorageAdapter):
     """
 
     def __init__(self, db_path: str, table: str) -> None:
-        self.table = table
+        self.table = _validate_sql_identifier(table)
         path = Path(db_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(str(path), isolation_level=None)
@@ -146,7 +168,7 @@ class PostgreSQLBackend(LogStorageAdapter):
 
     def __init__(self, database_url: str | None, table: str) -> None:
         self.database_url = database_url
-        self.table = table
+        self.table = _validate_sql_identifier(table)
         self._conn = None
 
     def _connect(self):
@@ -196,6 +218,16 @@ class PostgreSQLBackend(LogStorageAdapter):
         conn.commit()
         return count
 
+    def last_hash(self) -> str | None:
+        conn = self._connect()
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT payload->>'line_hash' FROM {self.table} "
+                "WHERE payload ? 'line_hash' ORDER BY id DESC LIMIT 1"
+            )
+            row = cur.fetchone()
+        return row[0] if row else None
+
     def close(self) -> None:
         if self._conn is not None:
             self._conn.close()
@@ -207,7 +239,7 @@ class MySQLBackend(LogStorageAdapter):
 
     def __init__(self, database_url: str | None, table: str) -> None:
         self.database_url = database_url
-        self.table = table
+        self.table = _validate_sql_identifier(table)
         self._conn = None
 
     def _connect(self):
@@ -270,6 +302,16 @@ class MySQLBackend(LogStorageAdapter):
         conn.commit()
         return count
 
+    def last_hash(self) -> str | None:
+        conn = self._connect()
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT JSON_UNQUOTE(JSON_EXTRACT(payload, '$.line_hash')) "
+                f"FROM {self.table} ORDER BY id DESC LIMIT 1"
+            )
+            row = cur.fetchone()
+        return row[0] if row and row[0] else None
+
     def close(self) -> None:
         if self._conn is not None:
             self._conn.close()
@@ -282,7 +324,8 @@ class MongoDBBackend(LogStorageAdapter):
     def __init__(self, database_url: str | None, table: str, database_name: str | None = None) -> None:
         self.database_url = database_url
         self.table = table
-        self.database_name = database_name or "mim_ai"
+        parsed = urlparse(database_url or "")
+        self.database_name = database_name or parsed.path.lstrip("/") or "mim_ai"
         self._client = None
         self._collection = None
 
@@ -312,6 +355,15 @@ class MongoDBBackend(LogStorageAdapter):
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
         result = collection.delete_many({"ts": {"$lt": cutoff}})
         return int(result.deleted_count)
+
+    def last_hash(self) -> str | None:
+        collection = self._connect()
+        latest = collection.find_one(
+            {"line_hash": {"$exists": True}},
+            sort=[("_id", -1)],
+            projection={"line_hash": 1},
+        )
+        return latest.get("line_hash") if latest else None
 
     def close(self) -> None:
         if self._client is not None:
@@ -396,7 +448,7 @@ def create_backend(config: Any, table: str) -> LogStorageAdapter:
     if adapter is not None:
         return GenericDatabaseBackend(
             table=table,
-            dsn=getattr(config, "database_url", None),
+            dsn=_database_url(config),
             collection=getattr(config, "collection", table),
             driver=backend_name,
             adapter=adapter,
@@ -408,12 +460,12 @@ def create_backend(config: Any, table: str) -> LogStorageAdapter:
         directory = getattr(config, "jsonl_path", "./logs/")
         return JSONLBackend(directory, table)
     if backend_name in {"postgres", "postgresql"}:
-        return PostgreSQLBackend(getattr(config, "database_url", None), table)
+        return PostgreSQLBackend(_database_url(config), table)
     if backend_name in {"mysql", "mariadb"}:
-        return MySQLBackend(getattr(config, "database_url", None), table)
+        return MySQLBackend(_database_url(config), table)
     if backend_name in {"mongo", "mongodb"}:
         return MongoDBBackend(
-            getattr(config, "database_url", None),
+            _database_url(config),
             table,
             getattr(config, "database_name", None),
         )

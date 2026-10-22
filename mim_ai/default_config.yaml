@@ -82,6 +82,7 @@ stt:
   timeout_ms: 20000
   temperature: 0.0
   extra: {}
+  extra_headers: {}
 
 tts:
   enabled: true
@@ -93,12 +94,20 @@ tts:
   format: wav
   timeout_ms: 20000
   extra: {}
+  extra_headers: {}
 
 intents:
   enabled: true
   strategy: hybrid
   intents_path: ""
   threshold: 0.55
+  llm_prompt: |
+    Classify the user's message into one of the listed intents.
+    Return only JSON with the keys intent and confidence.
+    Use intent "unknown" when none fit.
+
+    Registered intents:
+    {intents}
 
 audit:
   enabled: true
@@ -106,6 +115,8 @@ audit:
   db_path: ./audit/audit.db
   jsonl_path: ./audit/
   database_url: null
+  database_url_env: null
+  database_name: null
   collection: audit_events
   retention_days: 90
   hash_chain: true
@@ -118,6 +129,8 @@ logs:
   db_path: ./logs/normalizer.db
   jsonl_path: ./logs/
   database_url: null
+  database_url_env: null
+  database_name: null
   collection: normalizer_events
   retention_days: 7
   capture_jargon_used: true

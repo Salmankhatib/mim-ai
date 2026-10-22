@@ -39,6 +39,8 @@ class AuditConfig:
     db_path:         str  = "./audit/audit.db"
     jsonl_path:      str  = "./audit/jsonl/"  # used only when backend="jsonl"
     database_url:    str | None = None
+    database_url_env: str | None = None
+    database_name:   str | None = None
     collection:      str = "audit_events"
     adapter:         Any | None = None
     retention_days:  int = 90
@@ -51,7 +53,7 @@ class AuditConfig:
         raw = dict(data or {})
         known = {
             "enabled", "backend", "db_path", "jsonl_path", "database_url",
-            "collection", "adapter", "retention_days", "hash_chain",
+            "database_url_env", "database_name", "collection", "adapter", "retention_days", "hash_chain",
             "app_version", "purge_on_start",
         }
         return cls(**{key: value for key, value in raw.items() if key in known})
@@ -81,6 +83,8 @@ class NormalizerLogConfig:
     db_path:                 str   = "./logs/normalizer.db"
     jsonl_path:              str   = "./logs/normalizer/"
     database_url:            str | None = None
+    database_url_env:        str | None = None
+    database_name:           str | None = None
     collection:              str   = "normalizer_events"
     adapter:                 Any | None = None
     retention_days:          int   = 7
@@ -101,7 +105,7 @@ class NormalizerLogConfig:
         raw = dict(data or {})
         known = {
             "enabled", "backend", "db_path", "jsonl_path", "database_url",
-            "collection", "adapter", "retention_days", "capture_jargon_used",
+            "database_url_env", "database_name", "collection", "adapter", "retention_days", "capture_jargon_used",
             "capture_jargon_skipped", "capture_skipped_tokens", "max_tokens_per_event",
             "sample_rate", "purge_on_start",
         }

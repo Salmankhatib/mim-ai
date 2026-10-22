@@ -117,6 +117,8 @@ class Mim:
                 audit=self.audit if c.use_audit_log else None,
                 normalizer_log=self.normalizer_log if c.use_normalizer_log else None,
                 intents=self.intents if c.use_intents else None,
+                intent_strategy=self.config.intents.strategy,
+                intent_prompt=self.config.intents.llm_prompt,
             )
         return self._chatbot
 

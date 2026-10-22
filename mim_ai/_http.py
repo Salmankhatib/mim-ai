@@ -70,8 +70,12 @@ def transcribe(config: Any, wav_bytes: bytes) -> str:
     }
     if getattr(config, "language", None):
         fields["language"] = str(config.language)
+    if getattr(config, "temperature", None) is not None:
+        fields["temperature"] = str(config.temperature)
+    fields.update(getattr(config, "extra", {}) or {})
     payload = _multipart_payload(fields, boundary)
     headers = _headers(config)
+    headers.update(getattr(config, "extra_headers", {}) or {})
     headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
     req = request.Request(url, data=payload, headers=headers, method="POST")
     try:
@@ -100,11 +104,16 @@ def speak(config: Any, text: str) -> tuple[bytes, str]:
         "input": text,
         "voice": getattr(config, "voice", "nova"),
         "response_format": fmt,
+        **(getattr(config, "extra", {}) or {}),
     }
     req = request.Request(
         url,
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-        headers={**_headers(config, content_type="application/json"), "Accept": "audio/*"},
+        headers={
+            **_headers(config, content_type="application/json"),
+            **(getattr(config, "extra_headers", {}) or {}),
+            "Accept": "audio/*",
+        },
         method="POST",
     )
     try:

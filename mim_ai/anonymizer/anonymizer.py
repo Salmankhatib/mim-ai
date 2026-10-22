@@ -68,7 +68,7 @@ def _build_anonymizer_cached(language: str):
         from presidio_anonymizer import AnonymizerEngine
     except ImportError as exc:  # pragma: no cover - optional dependency
         raise RuntimeError(
-            "Presidio anonymizer is not installed. Install the package with: pip install presidio-analyzer presidio-anonymizer"
+            'Presidio anonymizer is not installed. Install the package with: pip install "mim-ai[anonymizer]"'
         ) from exc
     return AnonymizerEngine()
 
@@ -78,7 +78,7 @@ def _build_analyzer(config: AnonymizerConfig):
         import presidio_analyzer  # noqa: F401
     except ImportError as exc:  # pragma: no cover - optional dependency
         raise RuntimeError(
-            "Presidio analyzer is not installed. Install the package with: pip install presidio-analyzer presidio-anonymizer"
+            'Presidio analyzer is not installed. Install the package with: pip install "mim-ai[anonymizer]"'
         ) from exc
     return _build_analyzer_cached(_config_cache_key(config))
 

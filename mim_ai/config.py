@@ -102,6 +102,7 @@ class STTConfig:
     timeout_ms: int = 20000
     temperature: float = 0.0
     extra: dict[str, Any] = field(default_factory=dict)
+    extra_headers: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any] | None) -> "STTConfig":
@@ -113,6 +114,8 @@ class STTConfig:
                 setattr(cfg, key, raw[key])
         if "extra" in raw and isinstance(raw["extra"], dict):
             cfg.extra = raw["extra"]
+        if "extra_headers" in raw and isinstance(raw["extra_headers"], dict):
+            cfg.extra_headers = raw["extra_headers"]
         return cfg
 
 
@@ -128,6 +131,7 @@ class TTSConfig:
     format: str = "wav"
     timeout_ms: int = 20000
     extra: dict[str, Any] = field(default_factory=dict)
+    extra_headers: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any] | None) -> "TTSConfig":
@@ -139,6 +143,8 @@ class TTSConfig:
                 setattr(cfg, key, raw[key])
         if "extra" in raw and isinstance(raw["extra"], dict):
             cfg.extra = raw["extra"]
+        if "extra_headers" in raw and isinstance(raw["extra_headers"], dict):
+            cfg.extra_headers = raw["extra_headers"]
         return cfg
 
 

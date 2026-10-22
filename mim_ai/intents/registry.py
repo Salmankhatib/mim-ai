@@ -24,12 +24,15 @@ The registry stores intents and offers:
 """
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+
+from ..chatbot.llm import LLMError, LLMProvider
 
 
 _ASCII_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -168,6 +171,50 @@ class IntentRegistry:
         if best_score >= threshold:
             return best_intent, best_score
         return None, best_score
+
+    def match_llm(
+        self,
+        text: str,
+        provider: LLMProvider,
+        prompt_template: str,
+    ) -> tuple[Intent | None, float]:
+        """Classify text with the configured chatbot provider and prompt."""
+        if not self._intents:
+            return None, 0.0
+
+        intent_list = "\n".join(
+            f"- {intent.name}: {intent.description}" for intent in self._intents.values()
+        )
+        prompt = prompt_template.replace("{intents}", intent_list)
+
+        response = provider.chat([
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": text},
+        ])
+        content = response.content or ""
+        content = re.sub(r"^\s*```(?:json)?\s*|\s*```\s*$", "", content, flags=re.I)
+        try:
+            result = json.loads(content)
+        except json.JSONDecodeError as exc:
+            raise LLMError("Intent classifier returned invalid JSON") from exc
+        if not isinstance(result, dict):
+            raise LLMError("Intent classifier response must be a JSON object")
+
+        name = result.get("intent")
+        confidence = result.get("confidence", 0.0)
+        if not isinstance(name, str):
+            raise LLMError("Intent classifier response is missing a string 'intent'")
+        if isinstance(confidence, bool) or not isinstance(confidence, (int, float)):
+            raise LLMError("Intent classifier confidence must be a number")
+        confidence = float(confidence)
+        if not 0.0 <= confidence <= 1.0:
+            raise LLMError("Intent classifier confidence must be between 0 and 1")
+        if name == "unknown":
+            return None, confidence
+        intent = self._intents.get(name)
+        if intent is None:
+            raise LLMError(f"Intent classifier returned unregistered intent {name!r}")
+        return intent, confidence
 
     # -----------------------------------------------------------------
     # LLM-assisted matching — expose intents as a tool schema
