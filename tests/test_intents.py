@@ -2,8 +2,7 @@ import pytest
 
 from mim_ai.chatbot.chatbot import Chatbot
 from mim_ai.chatbot.config import ChatbotConfig
-from mim_ai.chatbot.llm import LLMError
-from mim_ai.chatbot.llm import OpenAICompatibleProvider
+from mim_ai.chatbot.llm import LLMError, OpenAICompatibleProvider, ToolCall
 from mim_ai.intents import Intent, IntentRegistry
 from mim_ai.normalizer.schema import NormalizerConfig
 from mim_ai.chatbot.history import build_history_store
@@ -118,6 +117,13 @@ def test_registry_matches_transcribed_stt_like_text(registry):
     assert score >= 0.0
 
 
+def test_chatbot_defaults_to_plain_text_conversation():
+    config = ChatbotConfig(enabled=True)
+
+    assert config.use_intents is False
+    assert config.enable_tools is False
+
+
 def test_registry_supports_custom_module_registration(registry):
     registry.add_intent(
         name="handoff_human",
@@ -158,6 +164,149 @@ def test_chatbot_uses_intent_registry_when_enabled():
 
     assert reply.intent == "get_weather"
     assert reply.intent_score >= 0.0
+
+
+def test_chatbot_sends_custom_system_prompt_and_returns_text():
+    system_prompt = "You are a concise support assistant. Answer only in French."
+
+    class FakeProvider:
+        def __init__(self):
+            self.messages = None
+            self.tools = None
+
+        def chat(self, messages, tools=None):
+            self.messages = messages
+            self.tools = tools
+            return type(
+                "Resp",
+                (),
+                {"content": "Bonjour !", "tool_calls": [], "usage": {}},
+            )()
+
+    provider = FakeProvider()
+    bot = Chatbot(
+        ChatbotConfig(
+            enabled=True,
+            system_prompt=system_prompt,
+            use_intents=False,
+            enable_tools=False,
+        ),
+        provider=provider,
+    )
+
+    reply = bot.chat("Bonjour", session_id="text-only")
+
+    assert provider.messages[0] == {"role": "system", "content": system_prompt}
+    assert provider.messages[-1] == {"role": "user", "content": "Bonjour"}
+    assert provider.tools is None
+    assert reply.text == "Bonjour !"
+    assert not hasattr(reply, "audio")
+
+
+def test_chatbot_does_not_execute_tools_when_disabled():
+    from mim_ai.chatbot.tools import ToolRegistry, ToolSpec
+
+    execution_count = 0
+
+    def side_effect():
+        nonlocal execution_count
+        execution_count += 1
+        return "done"
+
+    registry = ToolRegistry()
+    registry.register(
+        ToolSpec(
+            name="dangerous_action",
+            description="Perform an action",
+            params={},
+            fn=side_effect,
+            required=[],
+        )
+    )
+
+    class FakeProvider:
+        def chat(self, messages, tools=None):
+            return type(
+                "Resp",
+                (),
+                {
+                    "content": None,
+                    "tool_calls": [
+                        ToolCall(id="call-1", name="dangerous_action", arguments={})
+                    ],
+                    "usage": {},
+                },
+            )()
+
+    bot = Chatbot(
+        ChatbotConfig(
+            enabled=True,
+            use_intents=False,
+            enable_tools=False,
+        ),
+        provider=FakeProvider(),
+        registry=registry,
+    )
+
+    reply = bot.chat("Please do that")
+
+    assert execution_count == 0
+    assert reply.text == ""
+    assert "tools are disabled" in reply.error
+
+
+def test_chatbot_enforces_tool_call_limit_per_turn():
+    from mim_ai.chatbot.tools import ToolRegistry, ToolSpec
+
+    execution_count = 0
+
+    def action():
+        nonlocal execution_count
+        execution_count += 1
+        return "done"
+
+    registry = ToolRegistry()
+    registry.register(
+        ToolSpec(
+            name="action",
+            description="Perform an action",
+            params={},
+            fn=action,
+            required=[],
+        )
+    )
+
+    class FakeProvider:
+        def chat(self, messages, tools=None):
+            return type(
+                "Resp",
+                (),
+                {
+                    "content": None,
+                    "tool_calls": [
+                        ToolCall(id="call-1", name="action", arguments={}),
+                        ToolCall(id="call-2", name="action", arguments={}),
+                    ],
+                    "usage": {},
+                },
+            )()
+
+    bot = Chatbot(
+        ChatbotConfig(
+            enabled=True,
+            use_intents=False,
+            enable_tools=True,
+            max_tool_calls=1,
+        ),
+        provider=FakeProvider(),
+        registry=registry,
+    )
+
+    reply = bot.chat("Please do that")
+
+    assert execution_count == 0
+    assert reply.text == ""
+    assert "max_tool_calls" in reply.error
 
 
 def test_chatbot_llm_error_is_not_stored_as_successful_reply():

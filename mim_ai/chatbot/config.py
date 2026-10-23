@@ -27,7 +27,7 @@ class ChatbotConfig:
     language:             str  = "auto"
 
     # --- Production options --------------------------------------------
-    use_intents:          bool = True
+    use_intents:          bool = False
     intent_threshold:     float = 0.55
     intent_path:          str | None = None
 
@@ -48,7 +48,7 @@ class ChatbotConfig:
     use_normalizer_log:   bool = True
 
     # --- Tool use ------------------------------------------------------
-    enable_tools:         bool = True
+    enable_tools:         bool = False
     max_tool_calls:       int  = 5
 
     # --- Session management --------------------------------------------

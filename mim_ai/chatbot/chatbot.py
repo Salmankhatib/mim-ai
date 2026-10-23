@@ -247,10 +247,17 @@ class Chatbot:
                 if match is not None:
                     intent_name, intent_score = match.name, float(score)
 
-            for _ in range(self.config.max_tool_calls):
+            while True:
+                remaining_tool_calls = (
+                    self.config.max_tool_calls - len(tool_calls_made)
+                )
                 tool_schemas = (
                     self.registry.specs()
-                    if self.config.enable_tools and self.registry
+                    if (
+                        self.config.enable_tools
+                        and self.registry
+                        and remaining_tool_calls > 0
+                    )
                     else None
                 )
                 response = self.provider.chat(messages, tools=tool_schemas)
@@ -258,7 +265,23 @@ class Chatbot:
 
                 if not response.tool_calls:
                     final_text = response.content or ""
+                    if not final_text.strip():
+                        raise LLMError("LLM returned an empty text response")
                     break
+
+                if not self.config.enable_tools or not self.registry:
+                    raise LLMError(
+                        "LLM requested tools, but chatbot tools are disabled "
+                        "or no tools are registered"
+                    )
+                if (
+                    len(tool_calls_made) + len(response.tool_calls)
+                    > self.config.max_tool_calls
+                ):
+                    raise LLMError(
+                        "LLM requested more tool calls than "
+                        "chatbot.max_tool_calls allows"
+                    )
 
                 # Append the assistant's tool-call message verbatim.
                 messages.append(self._assistant_tool_msg(response.tool_calls))
@@ -274,10 +297,6 @@ class Chatbot:
                         "tool_call_id": call.id,
                         "content":      result,
                     })
-            else:
-                # Loop exhausted without a final answer.
-                final_text = "(tool call limit reached)"
-
         except LLMError as e:
             error_message = str(e)
             final_text = ""

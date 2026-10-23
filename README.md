@@ -96,12 +96,34 @@ mim.shutdown()
 
 To use chat, set the API key named by `chatbot.llm_api_key_env` in your environment and configure `chatbot.llm_endpoint` and `chatbot.llm_model` in `config.yaml`. The default chatbot endpoint is MNTRA's OpenAI-compatible API and expects `MNTRA_API_KEY`; compatible endpoints that do not require authentication can leave the key unset.
 
+The generated config starts with tools and intent classification disabled, so chat is a regular text-completion flow by default. Set `chatbot.system_prompt` to your full custom prompt; `system_prompt_extra` and `system_prompt_file` let you add reusable instructions:
+
+```yaml
+chatbot:
+  enabled: true
+  llm_endpoint: https://api.mntra.ma/v1
+  llm_model: mntra/mistral-darija
+  llm_api_key_env: MNTRA_API_KEY
+  enable_tools: false
+  use_intents: false
+  system_prompt: |
+    You are a helpful customer support assistant for Acme.
+    Answer in the language used by the customer.
+    Be clear and concise. Do not invent company policies.
+  system_prompt_extra: |
+    If you cannot answer from the information provided, say so and offer a human handoff.
+```
+
 ```python
 from mim_ai import Mim
 
 mim = Mim.from_config("config.yaml")
-reply = mim.chat("salam, chkoun nta?", session_id="user-42")
-print(reply.text)
+message = input("You: ").strip()
+if message:
+    reply = mim.chat(message, session_id="user-42")
+    if reply.error:
+        raise RuntimeError(reply.error)
+    print(f"Assistant: {reply.text}")
 mim.shutdown()
 ```
 

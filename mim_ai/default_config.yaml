@@ -29,11 +29,11 @@ chatbot:
   enabled: true
   system_prompt: darija
   language: auto
-  use_intents: true
+  use_intents: false
   use_normalizer: true
   use_audit_log: true
   use_normalizer_log: true
-  enable_tools: true
+  enable_tools: false
   max_tool_calls: 5
   max_history_turns: 20
   session_ttl_seconds: 3600
