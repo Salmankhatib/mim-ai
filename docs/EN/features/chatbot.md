@@ -36,6 +36,18 @@ chatbot:
 
 Configure `llm_endpoint`, `llm_model`, and `llm_api_key_env` for the selected OpenAI-compatible service. The environment variable named by `llm_api_key_env` is sent as a Bearer token when set. `app.chat()` returns a `ChatReply`; use `reply.text` for the generated text and check `reply.error` when a provider request fails.
 
+For asyncio web servers, use `await app.achat(...)` so blocking provider and history calls run in a worker thread. Transient rate-limit, server, and network errors are retried according to `llm_max_retries` and `llm_retry_backoff_ms`; set retries to `0` to disable them. Async methods prevent blocking the event loop but do not interrupt an in-flight request if its coroutine is cancelled.
+
+For multiple workers, use a shared history backend instead of the process-local `memory` default. For example:
+
+```yaml
+chatbot:
+  history_backend: redis
+  history_dsn_env: MIM_REDIS_URL
+```
+
+Install Redis support with `pip install "mim-ai[redis]"` and set `MIM_REDIS_URL` in the process environment.
+
 ## Config keys
 
 Typical configuration values include:
@@ -47,6 +59,10 @@ Typical configuration values include:
 - `chatbot.llm_endpoint`
 - `chatbot.llm_model`
 - `chatbot.llm_api_key_env`
+- `chatbot.llm_max_retries`
+- `chatbot.llm_retry_backoff_ms`
+- `chatbot.history_backend`
+- `chatbot.history_dsn_env`
 - `chatbot.enable_tools`
 - `chatbot.use_intents`
 - `chatbot.max_history_turns`

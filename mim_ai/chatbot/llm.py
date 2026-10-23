@@ -17,6 +17,7 @@ import urllib.error
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from .._http import open_with_retries
 from .config import ChatbotConfig
 
 
@@ -117,7 +118,12 @@ class OpenAICompatibleProvider:
 
         timeout_s = self.config.llm_timeout_ms / 1000
         try:
-            with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+            with open_with_retries(
+                req,
+                timeout=timeout_s,
+                max_retries=getattr(self.config, "llm_max_retries", 0),
+                backoff_ms=getattr(self.config, "llm_retry_backoff_ms", 250),
+            ) as resp:
                 payload = json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
             raise LLMError(f"HTTP {e.code}: {e.read().decode('utf-8', 'ignore')[:300]}")

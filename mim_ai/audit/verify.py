@@ -11,15 +11,18 @@ import hashlib
 import json
 import sqlite3
 from contextlib import closing
+import re
 
 
-def verify_chain(db_path: str) -> tuple[bool, str]:
+def verify_chain(db_path: str, table: str = "audit_events") -> tuple[bool, str]:
     """
     Returns (ok, message).
     `ok=False` means the chain is broken at some seq; message says where.
     """
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", table):
+        raise ValueError(f"Invalid SQL table name: {table!r}")
     with closing(sqlite3.connect(db_path)) as conn:
-        cur = conn.execute("SELECT * FROM audit_events ORDER BY seq")
+        cur = conn.execute(f"SELECT * FROM {table} ORDER BY seq")
         cols = [c[0] for c in cur.description]
 
         prev = None

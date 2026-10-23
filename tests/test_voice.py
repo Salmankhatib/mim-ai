@@ -307,6 +307,46 @@ def test_http_helpers_send_bearer_api_key(monkeypatch):
     assert _headers(cfg)["Authorization"] == "Bearer secret-test-key"
 
 
+def test_http_helper_retries_429_and_respects_retry_after(monkeypatch):
+    import urllib.error
+    import urllib.request
+    from io import BytesIO
+
+    from mim_ai._http import open_with_retries
+
+    attempts = []
+    delays = []
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        attempts.append(timeout)
+        if len(attempts) == 1:
+            raise urllib.error.HTTPError(
+                req.full_url, 429, "rate limited", {"Retry-After": "0"}, BytesIO()
+            )
+        return FakeResponse()
+
+    monkeypatch.setattr("mim_ai._http.request.urlopen", fake_urlopen)
+    monkeypatch.setattr("mim_ai._http.time.sleep", delays.append)
+
+    with open_with_retries(
+        urllib.request.Request("https://example.test"),
+        timeout=1,
+        max_retries=1,
+        backoff_ms=100,
+    ):
+        pass
+
+    assert attempts == [1, 1]
+    assert delays == [0.0]
+
+
 def test_voice_pipeline_honors_component_flags(monkeypatch):
     import mim_ai.voice.pipeline as pipeline_module
     from mim_ai.config import STTConfig, TTSConfig, VoiceSection

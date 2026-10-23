@@ -1,11 +1,12 @@
 import pytest
+import asyncio
 
 from mim_ai.chatbot.chatbot import Chatbot
 from mim_ai.chatbot.config import ChatbotConfig
+from mim_ai.chatbot.history import build_history_store
 from mim_ai.chatbot.llm import LLMError, OpenAICompatibleProvider, ToolCall
 from mim_ai.intents import Intent, IntentRegistry
 from mim_ai.normalizer.schema import NormalizerConfig
-from mim_ai.chatbot.history import build_history_store
 
 
 @pytest.fixture
@@ -201,6 +202,42 @@ def test_chatbot_sends_custom_system_prompt_and_returns_text():
     assert provider.tools is None
     assert reply.text == "Bonjour !"
     assert not hasattr(reply, "audio")
+
+
+def test_async_chat_supports_concurrent_sessions_with_sqlite_history(tmp_path):
+    class FakeProvider:
+        def chat(self, messages, tools=None):
+            return type(
+                "Resp",
+                (),
+                {
+                    "content": f"reply to {messages[-1]['content']}",
+                    "tool_calls": [],
+                    "usage": {},
+                },
+            )()
+
+    config = ChatbotConfig(
+        enabled=True,
+        use_intents=False,
+        enable_tools=False,
+        history_backend="sqlite",
+        history_dsn=str(tmp_path / "history.db"),
+    )
+    bot = Chatbot(config, provider=FakeProvider())
+
+    async def run_turns():
+        return await asyncio.gather(*[
+            bot.achat(f"message {index}", session_id=f"session-{index}")
+            for index in range(12)
+        ])
+
+    replies = asyncio.run(run_turns())
+
+    assert [reply.text for reply in replies] == [
+        f"reply to message {index}" for index in range(12)
+    ]
+    bot.close()
 
 
 def test_chatbot_does_not_execute_tools_when_disabled():

@@ -39,6 +39,8 @@ class ChatbotConfig:
     llm_temperature:      float = 0.7
     llm_max_tokens:       int  = 1024
     llm_timeout_ms:       int  = 30000
+    llm_max_retries:      int = 2
+    llm_retry_backoff_ms: int = 250
     llm_extra_headers:    dict = field(default_factory=dict)
     llm_extra_params:     dict = field(default_factory=dict)
 
@@ -56,12 +58,21 @@ class ChatbotConfig:
     session_ttl_seconds:  int  = 3600
     history_backend:      str = "memory"
     history_dsn:          str | None = None
+    history_dsn_env:      str | None = None
 
     # --- Free-form params passed to the LLM as-is ----------------------
     params:               dict = field(default_factory=dict)
 
     # --- Personalized roles, per-app semantics ------------------------
     roles:                dict = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.llm_timeout_ms <= 0:
+            raise ValueError("chatbot.llm_timeout_ms must be positive")
+        if self.llm_max_retries < 0 or self.llm_retry_backoff_ms < 0:
+            raise ValueError(
+                "chatbot retry count and backoff must be nonnegative"
+            )
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any] | None, **overrides: Any) -> "ChatbotConfig":
@@ -76,9 +87,11 @@ class ChatbotConfig:
             "language", "use_intents", "intent_threshold", "intent_path",
             "llm_provider", "llm_model", "llm_endpoint", "llm_api_key_env",
             "llm_temperature", "llm_max_tokens", "llm_timeout_ms",
+            "llm_max_retries", "llm_retry_backoff_ms",
             "llm_extra_headers", "llm_extra_params", "use_normalizer", "use_audit_log",
             "use_normalizer_log", "enable_tools", "max_tool_calls", "max_history_turns",
-            "session_ttl_seconds", "history_backend", "history_dsn", "params", "roles",
+            "session_ttl_seconds", "history_backend", "history_dsn", "history_dsn_env",
+            "params", "roles",
         }
 
         cleaned = {key: value for key, value in raw.items() if key in known}

@@ -33,7 +33,11 @@ class NormalizerLogger:
         if not self.enabled:
             return
 
-        self._backend = create_backend(config, getattr(config, "collection", "normalizer_events"))
+        self._backend = create_backend(
+            config,
+            getattr(config, "collection", "normalizer_events"),
+            schema="normalizer",
+        )
 
         if config.purge_on_start:
             self._backend.purge_older_than(config.retention_days)

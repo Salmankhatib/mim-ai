@@ -45,6 +45,7 @@ class AuditConfig:
     adapter:         Any | None = None
     retention_days:  int = 90
     hash_chain:      bool = True
+    multi_writer:    bool = False
     app_version:     str  = "mim-ai 0.1.0"
     purge_on_start:  bool = True              # run retention purge at startup
 
@@ -54,7 +55,7 @@ class AuditConfig:
         known = {
             "enabled", "backend", "db_path", "jsonl_path", "database_url",
             "database_url_env", "database_name", "collection", "adapter", "retention_days", "hash_chain",
-            "app_version", "purge_on_start",
+            "app_version", "purge_on_start", "multi_writer",
         }
         return cls(**{key: value for key, value in raw.items() if key in known})
 

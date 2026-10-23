@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 
 import numpy as np
@@ -52,6 +53,48 @@ def test_audit_logger_accepts_database_adapter():
     assert len(RecordingAdapter.instances) == 1
     assert RecordingAdapter.instances[0].table == "audit_events"
     assert RecordingAdapter.instances[0].rows[0]["event"] == "login"
+
+
+def test_multi_writer_requires_atomic_adapter():
+    with pytest.raises(ValueError, match="atomic chained appends"):
+        AuditLogger(
+            AuditConfig(
+                backend="postgresql",
+                adapter=RecordingAdapter,
+                multi_writer=True,
+                purge_on_start=False,
+            )
+        )
+
+
+def test_multi_writer_delegates_to_atomic_adapter():
+    class AtomicAdapter(RecordingAdapter):
+        def append_chained(self, row, hash_row):
+            previous = self.rows[-1]["line_hash"] if self.rows else None
+            row["prev_hash"] = previous
+            row["line_hash"] = hash_row(row)
+            self.rows.append(dict(row))
+            return row["line_hash"]
+
+    adapter = AtomicAdapter(
+        table="audit_events",
+        dsn=None,
+        collection="audit_events",
+        driver="postgresql",
+    )
+    logger = AuditLogger(
+        AuditConfig(
+            backend="postgresql",
+            adapter=adapter,
+            multi_writer=True,
+            purge_on_start=False,
+        )
+    )
+
+    logger.emit(event="first", trace_id="atomic-1")
+    logger.emit(event="second", trace_id="atomic-2")
+
+    assert adapter.rows[1]["prev_hash"] == adapter.rows[0]["line_hash"]
 
 
 def test_normalizer_logger_accepts_database_adapter():
@@ -137,6 +180,70 @@ def test_audit_logger_emits_a_verifiable_hash_chain(tmp_path):
     logger._backend.conn.close()
 
     assert verify_chain(str(database)) == (True, "chain intact")
+
+
+def test_audit_logger_supports_custom_sqlite_collection(tmp_path):
+    database = tmp_path / "custom-audit.db"
+    logger = AuditLogger(
+        AuditConfig(
+            backend="sqlite",
+            db_path=str(database),
+            collection="customer_audit",
+            purge_on_start=False,
+        )
+    )
+
+    logger.emit(event="customer_event", trace_id="custom-1", user_ref="u-1")
+
+    assert logger.find_by_user("u-1")[0]["event"] == "customer_event"
+    assert verify_chain(str(database), table="customer_audit") == (True, "chain intact")
+    assert logger.delete_by_user("u-1") == 1
+    assert logger.find_by_user("u-1")[0]["event"] == "deletion"
+    logger.close()
+
+
+def test_normalizer_logger_supports_custom_sqlite_collection(tmp_path):
+    logger = NormalizerLogger(
+        NormalizerLogConfig(
+            backend="sqlite",
+            db_path=str(tmp_path / "custom-normalizer.db"),
+            collection="customer_normalizer_log",
+            purge_on_start=False,
+        )
+    )
+
+    logger.emit(trace_id="custom-2", jargon_used={"salam": 1})
+
+    row = logger._backend.conn.execute(
+        "SELECT jargon_used FROM customer_normalizer_log"
+    ).fetchone()
+    assert json.loads(row[0]) == {"salam": 1}
+    logger.close()
+
+
+def test_audit_hash_chain_serializes_writers_across_logger_instances(tmp_path):
+    database = tmp_path / "concurrent-audit.db"
+    config = AuditConfig(
+        backend="sqlite",
+        db_path=str(database),
+        purge_on_start=False,
+    )
+    loggers = [AuditLogger(config), AuditLogger(config)]
+
+    def emit(index):
+        loggers[index % len(loggers)].emit(
+            event="concurrent", trace_id=f"trace-{index}"
+        )
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(emit, range(80)))
+
+    assert verify_chain(str(database)) == (True, "chain intact")
+    assert loggers[0]._backend.conn.execute(
+        "SELECT COUNT(*) FROM audit_events"
+    ).fetchone()[0] == 80
+    for logger in loggers:
+        logger.close()
 
 
 def test_database_backend_factory_builds_native_backends():

@@ -4,6 +4,7 @@ STT — talks to any OpenAI-compatible /audio/transcriptions endpoint.
 """
 from __future__ import annotations
 
+import asyncio
 import io
 import wave
 
@@ -25,6 +26,10 @@ class STT:
             return http_transcribe(self.config, wav_bytes)
         except APIError as e:
             raise STTError(str(e)) from e
+
+    async def atranscribe(self, audio: np.ndarray, sample_rate: int) -> str:
+        """Transcribe audio without blocking an asyncio event loop."""
+        return await asyncio.to_thread(self.transcribe, audio, sample_rate)
 
 
 class STTError(RuntimeError):

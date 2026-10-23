@@ -22,6 +22,8 @@ Config-first, model-agnostic toolkit for Moroccan Darija AI.
 """
 from __future__ import annotations
 
+import asyncio
+
 from .config import MimConfig, load_config, write_default_config
 
 __version__ = "0.1.0"
@@ -148,6 +150,15 @@ class Mim:
             raise RuntimeError("chatbot.enabled is false in your config")
         return self.chatbot.chat(message, session_id=session_id, user_ref=user_ref)
 
+    async def achat(self, message: str, *, session_id: str = "default",
+                    user_ref: str | None = None):
+        """One non-blocking chat turn for asyncio applications."""
+        if self.chatbot is None:
+            raise RuntimeError("chatbot.enabled is false in your config")
+        return await self.chatbot.achat(
+            message, session_id=session_id, user_ref=user_ref,
+        )
+
     def anonymize(self, text: str):
         """Anonymize text using the anonymizer settings in this Mim config."""
         from .anonymizer import anonymize
@@ -162,6 +173,19 @@ class Mim:
             session_id=session_id, user_ref=user_ref, play_audio=play_audio,
         )
 
+    async def alisten_and_reply(self, *, session_id: str = "default",
+                                user_ref: str | None = None,
+                                play_audio: bool = True):
+        """Run the blocking voice pipeline outside an asyncio event loop."""
+        if self.voice is None:
+            raise RuntimeError("voice.enabled is false in your config")
+        return await asyncio.to_thread(
+            self.voice.listen_and_reply,
+            session_id=session_id,
+            user_ref=user_ref,
+            play_audio=play_audio,
+        )
+
     def transcribe_file(self, path: str) -> str:
         """Transcribe a WAV file. Standalone — no chatbot needed."""
         if not self.config.stt.enabled:
@@ -170,6 +194,10 @@ class Mim:
         from .voice.audio import load_wav
         audio, sr = load_wav(path)
         return STT(self.config.stt).transcribe(audio, sr)
+
+    async def atranscribe_file(self, path: str) -> str:
+        """Transcribe a WAV file without blocking an asyncio event loop."""
+        return await asyncio.to_thread(self.transcribe_file, path)
 
     def shutdown(self) -> None:
         """Release resources. Idempotent."""

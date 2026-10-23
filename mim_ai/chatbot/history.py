@@ -18,7 +18,9 @@ All stores serialize a message as a plain dict:
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
+import threading
 import time
 from pathlib import Path
 # ---------------------------------------------------------------------------
@@ -43,6 +45,7 @@ class InMemoryHistoryStore:
         self.max_turns = max_turns
         self.ttl = ttl_seconds
         self._data: dict[str, tuple[float, list[dict]]] = {}
+        self._lock = threading.RLock()
 
     def _touch(self, sid: str) -> list[dict]:
         now = time.time()
@@ -54,17 +57,20 @@ class InMemoryHistoryStore:
         return self._data[sid][1]
 
     def get(self, sid: str) -> list[dict]:
-        return list(self._touch(sid))
+        with self._lock:
+            return list(self._touch(sid))
 
     def append(self, sid: str, message: dict) -> None:
-        hist = self._touch(sid)
-        hist.append(message)
-        cap = self.max_turns * 2
-        if len(hist) > cap:
-            del hist[:-cap]
+        with self._lock:
+            hist = self._touch(sid)
+            hist.append(message)
+            cap = self.max_turns * 2
+            if len(hist) > cap:
+                del hist[:-cap]
 
     def clear(self, sid: str) -> None:
-        self._data.pop(sid, None)
+        with self._lock:
+            self._data.pop(sid, None)
 
 
 # ---------------------------------------------------------------------------
@@ -98,44 +104,50 @@ class SQLiteHistoryStore:
         self.max_turns = max_turns
         self.ttl = ttl_seconds
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(db_path, isolation_level=None)
+        self.conn = sqlite3.connect(
+            db_path, isolation_level=None, check_same_thread=False, timeout=30,
+        )
+        self._lock = threading.RLock()
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.executescript(_SQLITE_SCHEMA)
 
     def get(self, sid: str) -> list[dict]:
         # TTL check: if the newest message is older than ttl, treat as empty.
-        row = self.conn.execute(
-            "SELECT MAX(ts) FROM session_messages WHERE session_id = ?", (sid,)
-        ).fetchone()
-        if row and row[0] and time.time() - row[0] > self.ttl:
-            return []
-        cur = self.conn.execute(
-            "SELECT payload FROM session_messages WHERE session_id = ? "
-            "ORDER BY seq DESC LIMIT ?",
-            (sid, self.max_turns * 2),
-        )
-        rows = [json.loads(r[0]) for r in cur.fetchall()]
-        rows.reverse()
-        return rows
+        with self._lock:
+            row = self.conn.execute(
+                "SELECT MAX(ts) FROM session_messages WHERE session_id = ?", (sid,)
+            ).fetchone()
+            if row and row[0] and time.time() - row[0] > self.ttl:
+                return []
+            cur = self.conn.execute(
+                "SELECT payload FROM session_messages WHERE session_id = ? "
+                "ORDER BY seq DESC LIMIT ?",
+                (sid, self.max_turns * 2),
+            )
+            rows = [json.loads(r[0]) for r in cur.fetchall()]
+            rows.reverse()
+            return rows
 
     def append(self, sid: str, message: dict) -> None:
-        self.conn.execute(
-            "INSERT INTO session_messages (session_id, ts, payload) VALUES (?, ?, ?)",
-            (sid, time.time(), json.dumps(message, ensure_ascii=False)),
-        )
-        # Trim: keep only the newest max_turns*2 rows for this session.
-        self.conn.execute(
-            "DELETE FROM session_messages WHERE session_id = ? AND seq NOT IN "
-            "(SELECT seq FROM session_messages WHERE session_id = ? "
-            " ORDER BY seq DESC LIMIT ?)",
-            (sid, sid, self.max_turns * 2),
-        )
+        with self._lock:
+            self.conn.execute(
+                "INSERT INTO session_messages (session_id, ts, payload) VALUES (?, ?, ?)",
+                (sid, time.time(), json.dumps(message, ensure_ascii=False)),
+            )
+            self.conn.execute(
+                "DELETE FROM session_messages WHERE session_id = ? AND seq NOT IN "
+                "(SELECT seq FROM session_messages WHERE session_id = ? "
+                " ORDER BY seq DESC LIMIT ?)",
+                (sid, sid, self.max_turns * 2),
+            )
 
     def clear(self, sid: str) -> None:
-        self.conn.execute("DELETE FROM session_messages WHERE session_id = ?", (sid,))
+        with self._lock:
+            self.conn.execute("DELETE FROM session_messages WHERE session_id = ?", (sid,))
 
     def close(self) -> None:
-        self.conn.close()
+        with self._lock:
+            self.conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -223,7 +235,7 @@ class PostgresHistoryStore:
         except ImportError as e:
             raise ImportError(
                 "PostgresHistoryStore requires the 'psycopg' package. "
-                "Install with: pip install mim-ai[postgres]"
+                'Install with: pip install "mim-ai[postgresql]"'
             ) from e
         self._psycopg = psycopg
         self.dsn = dsn
@@ -282,6 +294,13 @@ def build_history_store(config) -> HistoryStore:
     """
     backend = getattr(config, "history_backend", "memory")
     dsn = getattr(config, "history_dsn", "") or ""
+    dsn_env = getattr(config, "history_dsn_env", None)
+    if dsn_env:
+        dsn = os.environ.get(dsn_env, dsn)
+        if not dsn:
+            raise ValueError(
+                f"History DSN is missing; set environment variable {dsn_env!r}"
+            )
     max_turns = getattr(config, "max_history_turns", 20)
     ttl = getattr(config, "session_ttl_seconds", 3600)
 

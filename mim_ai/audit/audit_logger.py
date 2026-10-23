@@ -31,7 +31,19 @@ class AuditLogger:
         if not self.enabled:
             return
 
-        self._backend = create_backend(config, getattr(config, "collection", "audit_events"))
+        self._backend = create_backend(
+            config, getattr(config, "collection", "audit_events"), schema="audit"
+        )
+        if (
+            config.multi_writer
+            and config.hash_chain
+            and not getattr(self._backend, "supports_atomic_chained_append", False)
+        ):
+            self._backend.close()
+            raise ValueError(
+                "audit.multi_writer requires a backend with atomic chained appends; "
+                "use SQLite or provide a compatible adapter"
+            )
 
         self._last_hash = self._restore_last_hash()
 
@@ -114,14 +126,21 @@ class AuditLogger:
 
         # --- ISO 42001 tamper-evidence ---
         if self.config.hash_chain:
-            row["prev_hash"] = self._last_hash
-            row["line_hash"] = _line_hash(row)
-            self._last_hash = row["line_hash"]
+            append_chained = getattr(self._backend, "append_chained", None)
+            if (
+                callable(append_chained)
+                and getattr(self._backend, "supports_atomic_chained_append", False)
+            ):
+                self._last_hash = append_chained(row, _line_hash)
+            else:
+                row["prev_hash"] = self._last_hash
+                row["line_hash"] = _line_hash(row)
+                self._backend.append(row)
+                self._last_hash = row["line_hash"]
         else:
             row["prev_hash"] = None
             row["line_hash"] = _line_hash(row)
-
-        self._backend.append(row)
+            self._backend.append(row)
         summary["what_it_did"] = {
             "event": event,
             "status": status,
@@ -149,12 +168,7 @@ class AuditLogger:
             raise NotImplementedError(
                 "find_by_user() requires backend='sqlite'"
             )
-        cur = self._backend.conn.execute(
-            "SELECT * FROM audit_events WHERE user_ref = ? ORDER BY seq",
-            (user_ref,),
-        )
-        cols = [c[0] for c in cur.description]
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+        return self._backend.find_by_user(user_ref)
 
     def delete_by_user(self, user_ref: str) -> int:
         """
@@ -170,10 +184,7 @@ class AuditLogger:
             raise NotImplementedError(
                 "delete_by_user() requires backend='sqlite'"
             )
-        cur = self._backend.conn.execute(
-            "DELETE FROM audit_events WHERE user_ref = ?", (user_ref,)
-        )
-        n = cur.rowcount
+        n = self._backend.delete_by_user(user_ref)
         self.emit(
             event="deletion",
             trace_id="system",

@@ -15,10 +15,11 @@ import json
 import os
 import re
 import sqlite3
+import threading
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlparse
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -70,36 +71,91 @@ class SQLiteBackend(LogStorageAdapter):
     tables (audit_events, normalizer_events) live in separate DB
     files, so deleting normalizer logs never touches audit logs.
     """
+    supports_atomic_chained_append = True
 
-    def __init__(self, db_path: str, table: str) -> None:
+    def __init__(self, db_path: str, table: str, schema: str = "audit") -> None:
         self.table = _validate_sql_identifier(table)
+        if schema not in {"audit", "normalizer"}:
+            raise ValueError(f"Unsupported SQLite log schema: {schema!r}")
         path = Path(db_path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(str(path), isolation_level=None)
+        self.conn = sqlite3.connect(
+            str(path), isolation_level=None, check_same_thread=False,
+            timeout=30,
+        )
+        self._lock = threading.RLock()
         self.conn.execute("PRAGMA journal_mode=WAL")
-        self._ensure_schema()
+        self._ensure_schema(schema)
 
-    def _ensure_schema(self) -> None:
+    def _ensure_schema(self, schema_kind: str) -> None:
         schema = (Path(__file__).parent / "schema.sql").read_text(encoding="utf-8")
-        self.conn.executescript(schema)
+        default_table = "audit_events" if schema_kind == "audit" else "normalizer_events"
+        if self.table != default_table:
+            schema = schema.replace(default_table, self.table)
+            index_prefix = "idx_audit_" if schema_kind == "audit" else "idx_norm_"
+            schema = schema.replace(index_prefix, f"idx_{self.table}_")
+        with self._lock:
+            self.conn.executescript(schema)
 
-    def append(self, row: dict) -> None:
-        cols = ", ".join(row.keys())
+    def _insert(self, row: dict[str, Any]) -> None:
+        columns = ", ".join(row)
         placeholders = ", ".join("?" for _ in row)
         self.conn.execute(
-            f"INSERT INTO {self.table} ({cols}) VALUES ({placeholders})",
+            f"INSERT INTO {self.table} ({columns}) VALUES ({placeholders})",
             tuple(row.values()),
         )
 
+    def append(self, row: dict) -> None:
+        with self._lock:
+            self._insert(row)
+
+    def append_chained(
+        self, row: dict[str, Any], hash_row: Callable[[dict[str, Any]], str]
+    ) -> str:
+        """Atomically link and append a row across threads and processes."""
+        with self._lock:
+            self.conn.execute("BEGIN IMMEDIATE")
+            try:
+                previous = self.conn.execute(
+                    f"SELECT line_hash FROM {self.table} "
+                    "ORDER BY seq DESC LIMIT 1"
+                ).fetchone()
+                row["prev_hash"] = previous[0] if previous else None
+                row["line_hash"] = hash_row(row)
+                self._insert(row)
+                self.conn.execute("COMMIT")
+            except Exception:
+                self.conn.execute("ROLLBACK")
+                raise
+        return row["line_hash"]
+
     def purge_older_than(self, days: int) -> int:
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
-        cur = self.conn.execute(
-            f"DELETE FROM {self.table} WHERE ts < ?", (cutoff,)
-        )
-        return cur.rowcount
+        with self._lock:
+            cur = self.conn.execute(
+                f"DELETE FROM {self.table} WHERE ts < ?", (cutoff,)
+            )
+            return cur.rowcount
+
+    def find_by_user(self, user_ref: str) -> list[dict[str, Any]]:
+        with self._lock:
+            cur = self.conn.execute(
+                f"SELECT * FROM {self.table} WHERE user_ref = ? ORDER BY seq",
+                (user_ref,),
+            )
+            columns = [column[0] for column in cur.description]
+            return [dict(zip(columns, row)) for row in cur.fetchall()]
+
+    def delete_by_user(self, user_ref: str) -> int:
+        with self._lock:
+            cur = self.conn.execute(
+                f"DELETE FROM {self.table} WHERE user_ref = ?", (user_ref,)
+            )
+            return cur.rowcount
 
     def close(self) -> None:
-        self.conn.close()
+        with self._lock:
+            self.conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -416,6 +472,21 @@ class GenericDatabaseBackend(LogStorageAdapter):
             fh.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")))
             fh.write("\n")
 
+    @property
+    def supports_atomic_chained_append(self) -> bool:
+        return callable(getattr(self._adapter, "append_chained", None))
+
+    def append_chained(
+        self, row: dict[str, Any], hash_row: Callable[[dict[str, Any]], str]
+    ) -> str:
+        append_chained = getattr(self._adapter, "append_chained", None)
+        if not callable(append_chained):
+            raise NotImplementedError(
+                "The configured database adapter must implement "
+                "append_chained(row, hash_row) for multi-writer audit chains"
+            )
+        return append_chained(row, hash_row)
+
     def purge_older_than(self, days: int) -> int:
         if self._adapter is not None:
             return self._adapter.purge_older_than(days)
@@ -436,7 +507,9 @@ class GenericDatabaseBackend(LogStorageAdapter):
             close()
 
 
-def create_backend(config: Any, table: str) -> LogStorageAdapter:
+def create_backend(
+    config: Any, table: str, *, schema: str = "audit"
+) -> LogStorageAdapter:
     """Factory that resolves a concrete backend from config.
 
     Built-in production backends: sqlite, jsonl, postgresql, mysql, mongodb.
@@ -455,7 +528,9 @@ def create_backend(config: Any, table: str) -> LogStorageAdapter:
         )
 
     if backend_name == "sqlite":
-        return SQLiteBackend(getattr(config, "db_path", "./audit.db"), table)
+        return SQLiteBackend(
+            getattr(config, "db_path", "./audit.db"), table, schema=schema
+        )
     if backend_name == "jsonl":
         directory = getattr(config, "jsonl_path", "./logs/")
         return JSONLBackend(directory, table)

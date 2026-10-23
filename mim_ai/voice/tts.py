@@ -4,6 +4,7 @@ TTS — talks to any OpenAI-compatible /audio/speech endpoint.
 """
 from __future__ import annotations
 
+import asyncio
 import io
 import wave
 
@@ -26,6 +27,10 @@ class TTS:
             raise TTSError(str(e)) from e
 
         return _decode_audio(audio_bytes, mime, self.config.format)
+
+    async def asynthesize(self, text: str) -> tuple[np.ndarray, int]:
+        """Synthesize audio without blocking an asyncio event loop."""
+        return await asyncio.to_thread(self.synthesize, text)
 
 
 class TTSError(RuntimeError):

@@ -17,6 +17,8 @@ use Redis/Postgres/whatever — see the HistoryStore protocol.
 """
 from __future__ import annotations
 
+import asyncio
+import threading
 import time
 import uuid
 import warnings
@@ -130,6 +132,7 @@ class Chatbot:
             config.system_prompt_extra,
             file_path=getattr(config, "system_prompt_file", None),
         )
+        self._session_locks = [threading.RLock() for _ in range(64)]
 
     # -----------------------------------------------------------------
     @classmethod
@@ -199,6 +202,29 @@ class Chatbot:
         the pseudonymous user ID used by the audit log; never pass
         the raw phone / email here.
         """
+        lock = self._session_locks[hash(session_id) % len(self._session_locks)]
+        with lock:
+            return self._chat_turn(message, session_id=session_id, user_ref=user_ref)
+
+    async def achat(
+        self,
+        message: str,
+        *,
+        session_id: str = "default",
+        user_ref: str | None = None,
+    ) -> ChatReply:
+        """Run a blocking chat turn without blocking the asyncio event loop."""
+        return await asyncio.to_thread(
+            self.chat, message, session_id=session_id, user_ref=user_ref,
+        )
+
+    def _chat_turn(
+        self,
+        message: str,
+        *,
+        session_id: str,
+        user_ref: str | None,
+    ) -> ChatReply:
         if not self.enabled:
             return ChatReply(text="", trace_id="")
 

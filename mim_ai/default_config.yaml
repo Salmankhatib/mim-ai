@@ -39,6 +39,7 @@ chatbot:
   session_ttl_seconds: 3600
   history_backend: memory
   history_dsn: null
+  history_dsn_env: null
   llm_provider: openai
   llm_model: mntra/mistral-darija
   llm_endpoint: https://api.mntra.ma/v1
@@ -46,6 +47,8 @@ chatbot:
   llm_temperature: 0.7
   llm_max_tokens: 1024
   llm_timeout_ms: 30000
+  llm_max_retries: 2
+  llm_retry_backoff_ms: 250
   llm_extra_headers: {}
   llm_extra_params: {}
   params: {}
@@ -80,6 +83,8 @@ stt:
   api_key_env: OPENAI_API_KEY
   language: ar
   timeout_ms: 20000
+  max_retries: 2
+  retry_backoff_ms: 250
   temperature: 0.0
   extra: {}
   extra_headers: {}
@@ -93,6 +98,8 @@ tts:
   api_key_env: OPENAI_API_KEY
   format: wav
   timeout_ms: 20000
+  max_retries: 2
+  retry_backoff_ms: 250
   extra: {}
   extra_headers: {}
 
@@ -120,6 +127,7 @@ audit:
   collection: audit_events
   retention_days: 90
   hash_chain: true
+  multi_writer: false
   app_version: mim-ai 0.1.0
   purge_on_start: true
 

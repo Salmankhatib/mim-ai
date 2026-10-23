@@ -100,22 +100,31 @@ class STTConfig:
     api_key_env: str = "OPENAI_API_KEY"
     language: str = "ar"
     timeout_ms: int = 20000
+    max_retries: int = 2
+    retry_backoff_ms: int = 250
     temperature: float = 0.0
     extra: dict[str, Any] = field(default_factory=dict)
     extra_headers: dict[str, str] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.timeout_ms <= 0:
+            raise ValueError("stt.timeout_ms must be positive")
+        if self.max_retries < 0 or self.retry_backoff_ms < 0:
+            raise ValueError("stt retry count and backoff must be nonnegative")
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any] | None) -> "STTConfig":
         cfg = cls()
         raw = data or {}
         for key in ("enabled", "provider", "model", "base_url", "api_key_env", "language",
-                    "timeout_ms", "temperature"):
+                    "timeout_ms", "max_retries", "retry_backoff_ms", "temperature"):
             if key in raw:
                 setattr(cfg, key, raw[key])
         if "extra" in raw and isinstance(raw["extra"], dict):
             cfg.extra = raw["extra"]
         if "extra_headers" in raw and isinstance(raw["extra_headers"], dict):
             cfg.extra_headers = raw["extra_headers"]
+        cfg.__post_init__()
         return cfg
 
 
@@ -130,21 +139,30 @@ class TTSConfig:
     api_key_env: str = "OPENAI_API_KEY"
     format: str = "wav"
     timeout_ms: int = 20000
+    max_retries: int = 2
+    retry_backoff_ms: int = 250
     extra: dict[str, Any] = field(default_factory=dict)
     extra_headers: dict[str, str] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.timeout_ms <= 0:
+            raise ValueError("tts.timeout_ms must be positive")
+        if self.max_retries < 0 or self.retry_backoff_ms < 0:
+            raise ValueError("tts retry count and backoff must be nonnegative")
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any] | None) -> "TTSConfig":
         cfg = cls()
         raw = data or {}
         for key in ("enabled", "provider", "model", "voice", "base_url", "api_key_env",
-                    "format", "timeout_ms"):
+                    "format", "timeout_ms", "max_retries", "retry_backoff_ms"):
             if key in raw:
                 setattr(cfg, key, raw[key])
         if "extra" in raw and isinstance(raw["extra"], dict):
             cfg.extra = raw["extra"]
         if "extra_headers" in raw and isinstance(raw["extra_headers"], dict):
             cfg.extra_headers = raw["extra_headers"]
+        cfg.__post_init__()
         return cfg
 
 
@@ -203,6 +221,10 @@ class MimConfig:
                 cfg.chatbot.llm_max_tokens = llm_cfg["max_tokens"]
             if "timeout_ms" in llm_cfg:
                 cfg.chatbot.llm_timeout_ms = llm_cfg["timeout_ms"]
+            if "max_retries" in llm_cfg:
+                cfg.chatbot.llm_max_retries = llm_cfg["max_retries"]
+            if "retry_backoff_ms" in llm_cfg:
+                cfg.chatbot.llm_retry_backoff_ms = llm_cfg["retry_backoff_ms"]
             if "extra" in llm_cfg and isinstance(llm_cfg["extra"], dict):
                 cfg.chatbot.llm_extra_params.update(llm_cfg["extra"])
 

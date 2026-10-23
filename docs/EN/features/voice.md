@@ -22,6 +22,8 @@ reply = app.listen_and_reply(session_id="demo")
 print(reply.transcript, reply.reply_text)
 ```
 
+Async applications can call `await app.alisten_and_reply(...)` to keep the event loop responsive. STT/TTS requests use `max_retries` and `retry_backoff_ms`; set retries to `0` to disable retries.
+
 Capture uses RMS energy VAD. `voice.vad.threshold` is a normalized RMS amplitude (default `0.015`); `min_speech_ms` filters short transients, `min_silence_ms` ends an utterance, `pre_roll_ms` keeps its onset, and `start_timeout_ms` returns without calling STT if no speech is detected (`reply.status == "no_speech"`). `max_record_seconds` caps recording length. This is threshold-based, not a speech classifier; raise the threshold in noisy rooms.
 
 If no microphone or speaker is available, audio I/O raises an `AudioError` rather than sending fabricated silence or silently skipping playback.

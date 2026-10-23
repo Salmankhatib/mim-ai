@@ -9,14 +9,57 @@ from __future__ import annotations
 import json
 import mimetypes
 import os
+import time
+from email.utils import parsedate_to_datetime
 from io import BytesIO
 from typing import Any
-from urllib import request
+from urllib import error, request
 from urllib.parse import urljoin
 
 
 class APIError(RuntimeError):
     pass
+
+
+def open_with_retries(
+    req: request.Request,
+    *,
+    timeout: float,
+    max_retries: int = 0,
+    backoff_ms: int = 250,
+):
+    """Retry transient endpoint failures with exponential backoff."""
+    if max_retries < 0 or backoff_ms < 0:
+        raise ValueError("max_retries and backoff_ms must be nonnegative")
+    for attempt in range(max_retries + 1):
+        try:
+            return request.urlopen(req, timeout=timeout)
+        except error.HTTPError as exc:
+            if exc.code != 429 and exc.code not in {500, 502, 503, 504}:
+                raise
+            if attempt >= max_retries:
+                raise
+            retry_after = exc.headers.get("Retry-After")
+            exc.close()
+            delay = _retry_delay(retry_after, attempt, backoff_ms)
+        except error.URLError:
+            if attempt >= max_retries:
+                raise
+            delay = _retry_delay(None, attempt, backoff_ms)
+        time.sleep(delay)
+
+
+def _retry_delay(retry_after: str | None, attempt: int, backoff_ms: int) -> float:
+    if retry_after:
+        try:
+            return min(max(float(retry_after), 0.0), 30.0)
+        except ValueError:
+            try:
+                wait_until = parsedate_to_datetime(retry_after)
+                return min(max(wait_until.timestamp() - time.time(), 0.0), 30.0)
+            except (TypeError, ValueError, OverflowError):
+                pass
+    return min(backoff_ms * (2 ** attempt) / 1000, 30.0)
 
 
 def _api_base_url(config: Any) -> str:
@@ -79,7 +122,12 @@ def transcribe(config: Any, wav_bytes: bytes) -> str:
     headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
     req = request.Request(url, data=payload, headers=headers, method="POST")
     try:
-        with request.urlopen(req, timeout=(getattr(config, "timeout_ms", 20000) / 1000) or 20) as resp:
+        with open_with_retries(
+            req,
+            timeout=(getattr(config, "timeout_ms", 20000) / 1000) or 20,
+            max_retries=getattr(config, "max_retries", 0),
+            backoff_ms=getattr(config, "retry_backoff_ms", 250),
+        ) as resp:
             raw = resp.read()
     except Exception as exc:  # pragma: no cover
         raise APIError(f"Transcription request failed: {exc}") from exc
@@ -117,7 +165,12 @@ def speak(config: Any, text: str) -> tuple[bytes, str]:
         method="POST",
     )
     try:
-        with request.urlopen(req, timeout=(getattr(config, "timeout_ms", 20000) / 1000) or 20) as resp:
+        with open_with_retries(
+            req,
+            timeout=(getattr(config, "timeout_ms", 20000) / 1000) or 20,
+            max_retries=getattr(config, "max_retries", 0),
+            backoff_ms=getattr(config, "retry_backoff_ms", 250),
+        ) as resp:
             raw = resp.read()
             headers = getattr(resp, "headers", {})
             if hasattr(headers, "get_content_type"):

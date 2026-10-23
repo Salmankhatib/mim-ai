@@ -22,6 +22,8 @@ reply = app.listen_and_reply(session_id="demo")
 print(reply.transcript, reply.reply_text)
 ```
 
+Dans une application asyncio, appelez `await app.alisten_and_reply(...)` pour ne pas bloquer la boucle d’événements. Les requêtes STT/TTS utilisent `max_retries` et `retry_backoff_ms` ; définissez le nombre de tentatives à `0` pour les désactiver.
+
 La capture utilise une détection VAD par énergie RMS. `voice.vad.threshold` est une amplitude RMS normalisée (valeur par défaut : `0.015`) ; `min_speech_ms` filtre les sons brefs, `min_silence_ms` termine une phrase, `pre_roll_ms` conserve son début, et `start_timeout_ms` évite l’appel STT si aucun son n’est détecté (`reply.status == "no_speech"`). `max_record_seconds` limite la durée. Cette méthode utilise un seuil, pas un classificateur vocal ; augmentez-le dans les environnements bruyants.
 
 En l’absence de microphone ou de haut-parleur, les opérations audio lèvent `AudioError` au lieu d’envoyer du silence artificiel ou d’ignorer l’échec.

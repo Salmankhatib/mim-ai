@@ -12,6 +12,7 @@ Full voice pipeline, driven entirely by MimConfig.
 """
 from __future__ import annotations
 
+import asyncio
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -150,4 +151,19 @@ class VoicePipeline:
             audio=audio_out, sample_rate=sr,
             trace_id=trace_id, duration_ms=duration_ms, tool_calls=tools,
             status="ok" if reply_text else "transcribed",
+        )
+
+    async def alisten_and_reply(
+        self,
+        *,
+        session_id: str = "default",
+        user_ref: str | None = None,
+        play_audio: bool = True,
+    ) -> VoiceReply:
+        """Run the blocking recording/network pipeline outside asyncio."""
+        return await asyncio.to_thread(
+            self.listen_and_reply,
+            session_id=session_id,
+            user_ref=user_ref,
+            play_audio=play_audio,
         )
