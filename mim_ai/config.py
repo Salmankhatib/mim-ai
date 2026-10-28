@@ -23,6 +23,12 @@ class AudioConfig:
     sample_rate: int = 16000
     chunk_ms: int = 32
 
+    def __post_init__(self) -> None:
+        if self.sample_rate <= 0:
+            raise ValueError("voice.audio.sample_rate must be positive")
+        if self.chunk_ms <= 0:
+            raise ValueError("voice.audio.chunk_ms must be positive")
+
 
 @dataclass
 class VADConfig:
@@ -85,6 +91,9 @@ class VoiceSection:
             for key, value in audio_cfg.items():
                 if hasattr(cfg.audio, key):
                     setattr(cfg.audio, key, value)
+        cfg.audio.__post_init__()
+        if cfg.max_record_seconds <= 0:
+            raise ValueError("voice.max_record_seconds must be positive")
         if "silence_timeout_ms" in raw:
             cfg.silence_timeout_ms = raw["silence_timeout_ms"]
         return cfg
@@ -209,7 +218,7 @@ class MimConfig:
             cfg.chatbot = ChatbotConfig.from_mapping(merged)
             if "llm_provider" in llm_cfg:
                 cfg.chatbot.llm_provider = llm_cfg["llm_provider"]
-            if "base_url" in llm_cfg and not cfg.chatbot.llm_endpoint:
+            if "base_url" in llm_cfg and "llm_endpoint" not in chatbot_cfg:
                 cfg.chatbot.llm_endpoint = llm_cfg["base_url"]
             if "api_key_env" in llm_cfg:
                 cfg.chatbot.llm_api_key_env = llm_cfg["api_key_env"]

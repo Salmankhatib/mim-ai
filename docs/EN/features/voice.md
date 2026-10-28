@@ -28,6 +28,8 @@ Capture uses RMS energy VAD. `voice.vad.threshold` is a normalized RMS amplitude
 
 If no microphone or speaker is available, audio I/O raises an `AudioError` rather than sending fabricated silence or silently skipping playback.
 
+If the chatbot returns an error, the voice reply has `status == "error"` and exposes the message in `reply.error`; the pipeline does not speak a success-shaped fallback for a failed chat turn.
+
 ## Why it matters
 
 Voice is one of the most human ways to interact with an app, especially in call-center or field-service contexts.

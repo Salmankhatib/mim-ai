@@ -3,7 +3,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/mim-ai.svg?color=brightgreen)](https://pypi.org/project/mim-ai/)
 [![Python versions](https://img.shields.io/pypi/pyversions/mim-ai.svg)](https://pypi.org/project/mim-ai/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-139%20passed-brightgreen)](./tests/)
+[![Tests](https://github.com/Salmankhatib/mim-ai/actions/workflows/tests.yml/badge.svg)](https://github.com/Salmankhatib/mim-ai/actions/workflows/tests.yml)
 [![Made in Morocco](https://img.shields.io/badge/Made%20in-Morocco%20🇲🇦-cc0000)](https://github.com/salmankhatib06/mim-ai)
 
 > **A config-first Python SDK for Moroccan Darija AI.**  
@@ -158,7 +158,7 @@ For a voice pipeline, that's the difference between a live conversation and a la
 from mim_ai import anonymize
 
 result = anonymize("Mon CIN est AB58075 et mon tel est 0612345678")
-print(result.text)    # Mon CIN est <CIN_MA> et mon tel est <PHONE_MA>
+print(result.text)    # Mon CIN est [CIN_MA] et mon tel est ****345678
 print(result.entities_found)  # [EntityResult(type='CIN_MA', ...), ...]
 ```
 
@@ -179,7 +179,7 @@ There is no automatic regex-only fallback. See the [anonymizer setup guide](docs
 
 ## 📜 Compliance — Law 09-08 & ISO 42001
 
-MIM ships compliance by default:
+MIM provides audit-log features intended to support compliance workflows:
 
 ```yaml
 audit:
@@ -189,7 +189,7 @@ audit:
   retention_days: 90      # auto-purge on schedule
 ```
 
-Every chat turn is logged with a hash chain. Erasure requests are honored. Logs expire automatically. No extra code required.
+When enabled, chat turns are logged with a hash chain and retention is applied automatically. SQLite supports access and erasure helpers; erasing records breaks the chain, so retain and review verification evidence according to your organization's legal and compliance requirements. MIM is a technical component, not a compliance certification or legal guarantee.
 
 ---
 

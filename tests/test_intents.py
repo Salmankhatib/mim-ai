@@ -82,6 +82,43 @@ def test_llm_provider_sends_bearer_api_key(monkeypatch):
     assert captured["authorization"] == "Bearer test-key"
 
 
+def test_llm_provider_rejects_invalid_json_response(monkeypatch):
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return b"not-json"
+
+    monkeypatch.setattr("urllib.request.urlopen", lambda *args, **kwargs: Response())
+    provider = OpenAICompatibleProvider(
+        ChatbotConfig(enabled=True, llm_max_retries=0)
+    )
+
+    with pytest.raises(LLMError, match="invalid JSON"):
+        provider.chat([{"role": "user", "content": "hello"}])
+
+
+def test_llm_provider_rejects_invalid_tool_arguments():
+    provider = OpenAICompatibleProvider(ChatbotConfig(enabled=True))
+
+    with pytest.raises(LLMError, match="tool arguments"):
+        provider._parse({
+            "choices": [{
+                "message": {
+                    "content": None,
+                    "tool_calls": [{
+                        "id": "call-1",
+                        "function": {"name": "lookup", "arguments": "[]"},
+                    }],
+                }
+            }]
+        })
+
+
 def test_unknown_history_backend_fails_explicitly():
     with pytest.raises(ValueError, match="Unsupported history backend"):
         build_history_store(ChatbotConfig(history_backend="typo"))
@@ -123,6 +160,28 @@ def test_chatbot_defaults_to_plain_text_conversation():
 
     assert config.use_intents is False
     assert config.enable_tools is False
+
+
+def test_chatbot_keeps_an_explicit_empty_tool_registry():
+    from mim_ai.chatbot.tools import ToolRegistry
+
+    registry = ToolRegistry()
+
+    class FakeProvider:
+        def chat(self, messages, tools=None):
+            return type(
+                "Resp",
+                (),
+                {"content": "ready", "tool_calls": [], "usage": {}},
+            )()
+
+    bot = Chatbot(
+        ChatbotConfig(enabled=True, enable_tools=True, use_intents=False),
+        provider=FakeProvider(),
+        registry=registry,
+    )
+
+    assert bot.registry is registry
 
 
 def test_registry_supports_custom_module_registration(registry):

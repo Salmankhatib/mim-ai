@@ -96,6 +96,17 @@ def test_global_intent_threshold_is_used_unless_chatbot_overrides_it():
     assert overridden.chatbot.intent_threshold == 0.4
 
 
+def test_legacy_llm_base_url_is_used_unless_chatbot_endpoint_overrides_it():
+    legacy = MimConfig.from_dict({"llm": {"base_url": "https://legacy.example/v1"}})
+    preferred = MimConfig.from_dict({
+        "llm": {"base_url": "https://legacy.example/v1"},
+        "chatbot": {"llm_endpoint": "https://chatbot.example/v1"},
+    })
+
+    assert legacy.chatbot.llm_endpoint == "https://legacy.example/v1"
+    assert preferred.chatbot.llm_endpoint == "https://chatbot.example/v1"
+
+
 def test_init_cli_creates_config_and_reports_path(tmp_path, monkeypatch, capsys):
     from mim_ai.__main__ import init_main
 
@@ -105,3 +116,16 @@ def test_init_cli_creates_config_and_reports_path(tmp_path, monkeypatch, capsys)
     assert init_main() == 0
     assert config_path.is_file()
     assert f"Config ready at {config_path}" in capsys.readouterr().out
+
+
+def test_generated_default_config_runs_normalizer_outside_repository(
+    tmp_path, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    app = Mim.from_config()
+
+    normalized = app.normalizer.normalize("salam wa7ed 3la ekher")
+
+    assert normalized == "salam wa7ed 3la ekher"
+    assert (tmp_path / "config.yaml").is_file()
+    app.shutdown()

@@ -28,6 +28,8 @@ La capture utilise une détection VAD par énergie RMS. `voice.vad.threshold` es
 
 En l’absence de microphone ou de haut-parleur, les opérations audio lèvent `AudioError` au lieu d’envoyer du silence artificiel ou d’ignorer l’échec.
 
+Si le chatbot renvoie une erreur, la réponse vocale indique `status == "error"` et expose le message dans `reply.error` ; le pipeline ne prononce pas de réponse de succès de remplacement.
+
 ## Pourquoi c’est important
 
 La voix est l’un des moyens les plus naturels d’interagir avec une application, particulièrement dans les centres d’appels ou les flux terrain.

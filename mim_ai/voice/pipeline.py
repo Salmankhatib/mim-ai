@@ -37,6 +37,7 @@ class VoiceReply:
     duration_ms: int = 0
     tool_calls:  list[dict] = field(default_factory=list)
     status:       str = "ok"
+    error:        str | None = None
 
 
 class VoicePipeline:
@@ -116,12 +117,16 @@ class VoicePipeline:
 
         # 5. Chat
         reply_text, tools = "", []
+        chat_error = None
         if self.cfg.use_chatbot and self.chatbot:
             r = self.chatbot.chat(transcript, session_id=session_id, user_ref=user_ref)
             reply_text, tools = r.text, r.tool_calls
+            chat_error = getattr(r, "error", None)
+            if chat_error:
+                reply_text = ""
             if getattr(r, "intent", None):
                 intent_name, intent_score = r.intent, getattr(r, "intent_score", 0.0)
-        if self.cfg.use_chatbot and not reply_text:
+        if self.cfg.use_chatbot and not reply_text and not chat_error:
             reply_text = "سمح ليا، ما فهمتش."
 
         # 6. Speak
@@ -133,15 +138,17 @@ class VoicePipeline:
 
         # 7. Audit
         duration_ms = int((time.perf_counter() - t0) * 1000)
+        status = "error" if chat_error else ("ok" if reply_text else "transcribed")
         if self.audit and self.cfg.use_audit_log:
             self.audit.emit(
                 event="voice_turn", trace_id=trace_id, user_ref=user_ref,
                 input_text=transcript, output_text=reply_text,
                 duration_ms=duration_ms,
-                status="ok" if reply_text else "transcribed",
+                status=status,
                 extra={
                     "session_id": session_id, "intent": intent_name,
                     "tool_calls": [t["name"] for t in tools],
+                    **({"error": chat_error} if chat_error else {}),
                 },
             )
 
@@ -150,7 +157,8 @@ class VoicePipeline:
             intent=intent_name, intent_score=intent_score,
             audio=audio_out, sample_rate=sr,
             trace_id=trace_id, duration_ms=duration_ms, tool_calls=tools,
-            status="ok" if reply_text else "transcribed",
+            status=status,
+            error=chat_error,
         )
 
     async def alisten_and_reply(

@@ -38,6 +38,12 @@ def test_voice_config_validates_vad_and_supports_legacy_silence_timeout():
     with pytest.raises(ValueError, match="threshold"):
         VADConfig(threshold=0)
 
+    with pytest.raises(ValueError, match="max_record_seconds"):
+        VoiceSection.from_mapping({"max_record_seconds": 0})
+
+    with pytest.raises(ValueError, match="sample_rate"):
+        VoiceSection.from_mapping({"audio": {"sample_rate": 0}})
+
 
 def test_chat_reply_exposes_intent_metadata():
     reply = ChatReply(text="hello")
@@ -199,6 +205,64 @@ def test_pipeline_reports_no_speech_without_calling_stt(monkeypatch):
     assert result.status == "no_speech"
     assert result.transcript == ""
     assert result.trace_id
+
+
+def test_pipeline_surfaces_chat_errors_and_does_not_speak_success_fallback(monkeypatch):
+    import importlib
+    from types import SimpleNamespace
+
+    from mim_ai.config import STTConfig, TTSConfig, VoiceSection
+    from mim_ai.voice.pipeline import VoicePipeline
+
+    pipeline_module = importlib.import_module("mim_ai.voice.pipeline")
+    monkeypatch.setattr(
+        pipeline_module,
+        "record_until_silence",
+        lambda *args, **kwargs: np.ones(10, dtype=np.float32),
+    )
+
+    class FakeSTT:
+        def __init__(self, config):
+            self.config = config
+
+        def transcribe(self, audio, sample_rate):
+            return "salam"
+
+    class FakeTTS:
+        def __init__(self, config):
+            self.config = config
+
+        def synthesize(self, text):
+            pytest.fail("TTS must not run after a chatbot error")
+
+    class FakeAudit:
+        def __init__(self):
+            self.events = []
+
+        def emit(self, **event):
+            self.events.append(event)
+
+    monkeypatch.setattr(pipeline_module, "STT", FakeSTT)
+    monkeypatch.setattr(pipeline_module, "TTS", FakeTTS)
+    audit = FakeAudit()
+    chatbot = SimpleNamespace(
+        chat=lambda *args, **kwargs: ChatReply(text="", error="upstream unavailable")
+    )
+    pipeline = VoicePipeline(
+        VoiceSection(),
+        STTConfig(),
+        TTSConfig(),
+        chatbot=chatbot,
+        audit=audit,
+    )
+
+    result = pipeline.listen_and_reply(play_audio=False)
+
+    assert result.status == "error"
+    assert result.error == "upstream unavailable"
+    assert result.reply_text == ""
+    assert audit.events[0]["status"] == "error"
+    assert audit.events[0]["extra"]["error"] == "upstream unavailable"
 
 
 def test_missing_dictionary_override_path_is_reported():

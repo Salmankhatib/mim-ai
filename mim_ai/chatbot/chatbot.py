@@ -111,9 +111,9 @@ class Chatbot:
     ) -> None:
         self.config = config
         self.enabled = config.enabled
-        self.provider = provider or build_provider(config)
-        self.registry = registry or get_default_registry()
-        self.history = history or build_history_store(config)
+        self.provider = provider if provider is not None else build_provider(config)
+        self.registry = registry if registry is not None else get_default_registry()
+        self.history = history if history is not None else build_history_store(config)
         self.roles = dict(getattr(config, "roles", {}) or {})
         self.normalizer = normalizer
         self.audit = audit

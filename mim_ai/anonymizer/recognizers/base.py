@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 
 class BasePatternRecognizer:
     """Small compatibility shim for custom recognizer construction."""

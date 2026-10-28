@@ -124,7 +124,10 @@ class OpenAICompatibleProvider:
                 max_retries=getattr(self.config, "llm_max_retries", 0),
                 backoff_ms=getattr(self.config, "llm_retry_backoff_ms", 250),
             ) as resp:
-                payload = json.loads(resp.read().decode("utf-8"))
+                try:
+                    payload = json.loads(resp.read().decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError) as e:
+                    raise LLMError("LLM endpoint returned invalid JSON") from e
         except urllib.error.HTTPError as e:
             raise LLMError(f"HTTP {e.code}: {e.read().decode('utf-8', 'ignore')[:300]}")
         except urllib.error.URLError as e:
@@ -145,8 +148,10 @@ class OpenAICompatibleProvider:
             fn = tc.get("function", {})
             try:
                 args = json.loads(fn.get("arguments") or "{}")
-            except json.JSONDecodeError:
-                args = {}
+            except json.JSONDecodeError as e:
+                raise LLMError("LLM returned invalid JSON tool arguments") from e
+            if not isinstance(args, dict):
+                raise LLMError("LLM tool arguments must be a JSON object")
             tool_calls.append(ToolCall(
                 id=tc.get("id", ""),
                 name=fn.get("name", ""),
