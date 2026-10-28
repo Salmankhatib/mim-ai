@@ -23,8 +23,12 @@ Config-first, model-agnostic toolkit for Moroccan Darija AI.
 from __future__ import annotations
 
 import asyncio
+from typing import TYPE_CHECKING
 
 from .config import MimConfig, load_config, write_default_config
+
+if TYPE_CHECKING:
+    from .chatbot.tools import ToolRegistry
 
 __version__ = "0.1.0"
 
@@ -60,8 +64,11 @@ class Mim:
     HTTP client.
     """
 
-    def __init__(self, config: MimConfig) -> None:
+    def __init__(
+        self, config: MimConfig, *, tool_registry: ToolRegistry | None = None
+    ) -> None:
         self.config = config
+        self._tool_registry = tool_registry
         self._normalizer = None
         self._intents = None
         self._audit = None
@@ -71,8 +78,10 @@ class Mim:
         self._voice = None
 
     @classmethod
-    def from_config(cls, path: str = "config.yaml") -> "Mim":
-        return cls(load_config(path))
+    def from_config(
+        cls, path: str = "config.yaml", *, tool_registry: ToolRegistry | None = None
+    ) -> "Mim":
+        return cls(load_config(path), tool_registry=tool_registry)
 
     # ------------------------------------------------------------------
     # Lazy properties — build on first access, cache forever.
@@ -121,6 +130,7 @@ class Mim:
                 intents=self.intents if c.use_intents else None,
                 intent_strategy=self.config.intents.strategy,
                 intent_prompt=self.config.intents.llm_prompt,
+                registry=self._tool_registry,
             )
         return self._chatbot
 

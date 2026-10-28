@@ -44,6 +44,7 @@ class Intent:
     description: str
     examples:    list[str] = field(default_factory=list)
     tool:        str | None = None
+    tools:       list[str] | None = None
 
     def __post_init__(self) -> None:
         if not _ASCII_NAME_RE.match(self.name):
@@ -52,6 +53,28 @@ class Intent:
                 f"got {self.name!r}. Intents are English-internal by "
                 f"design so logs and handlers stay portable."
             )
+        if self.tool is not None and not isinstance(self.tool, str):
+            raise TypeError("Intent tool must be a tool name string")
+        if self.tools is not None and (
+            not isinstance(self.tools, list)
+            or not all(isinstance(name, str) for name in self.tools)
+        ):
+            raise TypeError("Intent tools must be a list of tool names")
+        configured_names = (self.tools or []) + (
+            [self.tool] if self.tool is not None else []
+        )
+        if len(set(configured_names)) != len(configured_names):
+            raise ValueError(f"Intent {self.name!r} contains duplicate tool names")
+
+    @property
+    def tool_names(self) -> list[str] | None:
+        """Return the configured tool allowlist, or None when unrestricted."""
+        if self.tools is None and self.tool is None:
+            return None
+        names = list(self.tools or [])
+        if self.tool is not None:
+            names.append(self.tool)
+        return names
 
 
 class IntentRegistry:
@@ -73,6 +96,7 @@ class IntentRegistry:
         description: str,
         examples: list[str] | None = None,
         tool: str | None = None,
+        tools: list[str] | None = None,
     ) -> Intent:
         """Register a new intent at runtime from a module or STT callback."""
         intent = Intent(
@@ -80,6 +104,7 @@ class IntentRegistry:
             description=description,
             examples=list(examples or []),
             tool=tool,
+            tools=tools,
         )
         self.register(intent)
         return intent
@@ -108,6 +133,7 @@ class IntentRegistry:
                 description=raw["description"],
                 examples=raw.get("examples", []),
                 tool=raw.get("tool"),
+                tools=raw.get("tools"),
             ))
             count += 1
         return count
@@ -120,6 +146,10 @@ class IntentRegistry:
 
     def all(self) -> list[Intent]:
         return list(self._intents.values())
+
+    @property
+    def has_tool_restrictions(self) -> bool:
+        return any(intent.tool_names is not None for intent in self._intents.values())
 
     # -----------------------------------------------------------------
     # Rule-based matching — fast, deterministic, no LLM

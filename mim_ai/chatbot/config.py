@@ -73,6 +73,14 @@ class ChatbotConfig:
             raise ValueError(
                 "chatbot retry count and backoff must be nonnegative"
             )
+        if self.max_tool_calls < 0:
+            raise ValueError("chatbot.max_tool_calls cannot be negative")
+        if self.max_history_turns <= 0 or self.session_ttl_seconds <= 0:
+            raise ValueError(
+                "chatbot history limits and session TTL must be positive"
+            )
+        if not 0.0 <= self.intent_threshold <= 1.0:
+            raise ValueError("chatbot.intent_threshold must be between 0 and 1")
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any] | None, **overrides: Any) -> "ChatbotConfig":

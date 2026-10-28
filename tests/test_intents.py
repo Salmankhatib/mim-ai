@@ -184,6 +184,234 @@ def test_chatbot_keeps_an_explicit_empty_tool_registry():
     assert bot.registry is registry
 
 
+def test_tool_registry_filters_schemas_and_validates_arguments():
+    from mim_ai.chatbot.tools import ToolRegistry, ToolSpec
+
+    registry = ToolRegistry()
+    registry.register(ToolSpec(
+        name="lookup_order",
+        description="Find an order.",
+        params={"order_id": {"type": "string"}},
+        fn=lambda order_id: order_id,
+        required=["order_id"],
+    ))
+    registry.register(ToolSpec(
+        name="delete_order",
+        description="Delete an order.",
+        params={"order_id": {"type": "string"}},
+        fn=lambda order_id: order_id,
+        required=["order_id"],
+    ))
+
+    assert [schema["function"]["name"] for schema in registry.specs({"lookup_order"})] == [
+        "lookup_order"
+    ]
+    assert registry.execute(
+        "lookup_order", {"order_id": "ORD-1"}, allowed_names={"lookup_order"}
+    ) == "ORD-1"
+    with pytest.raises(PermissionError, match="not allowed"):
+        registry.execute(
+            "delete_order",
+            {"order_id": "ORD-1"},
+            allowed_names={"lookup_order"},
+        )
+    with pytest.raises(ValueError, match="unexpected arguments"):
+        registry.execute("lookup_order", {"order_id": "ORD-1", "admin": True})
+    with pytest.raises(TypeError, match="must be string"):
+        registry.execute("lookup_order", {"order_id": 1})
+
+
+def test_tool_registry_rejects_non_finite_numbers():
+    from mim_ai.chatbot.tools import ToolRegistry, ToolSpec
+
+    registry = ToolRegistry()
+    registry.register(ToolSpec(
+        name="set_limit",
+        description="Set a numeric limit.",
+        params={"limit": {"type": "number"}},
+        fn=lambda limit: str(limit),
+        required=["limit"],
+    ))
+
+    with pytest.raises(ValueError, match="must be finite"):
+        registry.execute("set_limit", {"limit": float("inf")})
+
+
+def test_parameterized_sql_tool_treats_injection_text_as_a_value():
+    import sqlite3
+
+    from mim_ai.chatbot.tools import ToolRegistry, ToolSpec
+
+    connection = sqlite3.connect(":memory:")
+    connection.execute("CREATE TABLE orders (id TEXT, status TEXT)")
+    connection.execute(
+        "INSERT INTO orders (id, status) VALUES (?, ?)", ("ORD-1", "shipped")
+    )
+    registry = ToolRegistry()
+
+    def lookup_order(order_id):
+        row = connection.execute(
+            "SELECT status FROM orders WHERE id = ?", (order_id,)
+        ).fetchone()
+        return row[0] if row else "not found"
+
+    registry.register(ToolSpec(
+        name="lookup_order",
+        description="Read order status.",
+        params={"order_id": {"type": "string"}},
+        fn=lookup_order,
+        required=["order_id"],
+    ))
+
+    assert registry.execute(
+        "lookup_order", {"order_id": "ORD-1' OR '1'='1"}
+    ) == "not found"
+    connection.close()
+
+
+def test_chatbot_scopes_tools_to_matched_intent():
+    from mim_ai.chatbot.tools import ToolRegistry, ToolSpec
+
+    registry = ToolRegistry()
+    registry.register(ToolSpec(
+        name="lookup_order",
+        description="Find an order.",
+        params={"order_id": {"type": "string"}},
+        fn=lambda order_id: f"found {order_id}",
+        required=["order_id"],
+    ))
+    registry.register(ToolSpec(
+        name="delete_order",
+        description="Delete an order.",
+        params={"order_id": {"type": "string"}},
+        fn=lambda order_id: f"deleted {order_id}",
+        required=["order_id"],
+    ))
+    intents = IntentRegistry()
+    intents.add_intent(
+        name="check_order",
+        description="Read order details.",
+        examples=["check order ORD-1"],
+        tools=["lookup_order"],
+    )
+    sent_schemas = []
+    responses = [
+        type(
+            "Resp",
+            (),
+            {
+                "content": None,
+                "tool_calls": [
+                    ToolCall(
+                        id="call-1",
+                        name="lookup_order",
+                        arguments={"order_id": "ORD-1"},
+                    )
+                ],
+                "usage": {},
+            },
+        )(),
+        type("Resp", (), {"content": "Order found.", "tool_calls": [], "usage": {}})(),
+    ]
+
+    class FakeProvider:
+        def chat(self, messages, tools=None):
+            sent_schemas.append(tools)
+            return responses.pop(0)
+
+    bot = Chatbot(
+        ChatbotConfig(
+            enabled=True,
+            use_intents=True,
+            enable_tools=True,
+            use_normalizer=False,
+            use_audit_log=False,
+            use_normalizer_log=False,
+        ),
+        provider=FakeProvider(),
+        registry=registry,
+        intents=intents,
+    )
+
+    reply = bot.chat("check order ORD-1")
+
+    assert reply.text == "Order found."
+    assert reply.intent == "check_order"
+    assert [schema["function"]["name"] for schema in sent_schemas[0]] == [
+        "lookup_order"
+    ]
+
+
+def test_chatbot_denies_tool_calls_without_matching_configured_intent():
+    from mim_ai.chatbot.tools import ToolRegistry, ToolSpec
+
+    called = []
+    registry = ToolRegistry()
+    registry.register(ToolSpec(
+        name="delete_order",
+        description="Delete an order.",
+        params={},
+        fn=lambda: called.append(True) or "deleted",
+        required=[],
+    ))
+    intents = IntentRegistry()
+    intents.add_intent(
+        name="check_order",
+        description="Read order details.",
+        examples=["check order"],
+        tools=["delete_order"],
+    )
+
+    class FakeProvider:
+        def chat(self, messages, tools=None):
+            return type(
+                "Resp",
+                (),
+                {
+                    "content": None,
+                    "tool_calls": [
+                        ToolCall(id="call-1", name="delete_order", arguments={})
+                    ],
+                    "usage": {},
+                },
+            )()
+
+    bot = Chatbot(
+        ChatbotConfig(
+            enabled=True,
+            use_intents=True,
+            enable_tools=True,
+            use_normalizer=False,
+            use_audit_log=False,
+            use_normalizer_log=False,
+        ),
+        provider=FakeProvider(),
+        registry=registry,
+        intents=intents,
+    )
+
+    reply = bot.chat("something unrelated")
+
+    assert called == []
+    assert "not allowed for intent unknown" in reply.error
+
+
+def test_intent_yaml_supports_multiple_tools(tmp_path):
+    path = tmp_path / "intents.yaml"
+    path.write_text(
+        "intents:\n"
+        "  - name: customer_support\n"
+        "    description: Help customer.\n"
+        "    tools: [lookup_order, create_ticket]\n"
+        "    examples: [help]\n",
+        encoding="utf-8",
+    )
+
+    registry = IntentRegistry()
+    assert registry.load_yaml(path) == 1
+    assert registry.all()[0].tool_names == ["lookup_order", "create_ticket"]
+
+
 def test_registry_supports_custom_module_registration(registry):
     registry.add_intent(
         name="handoff_human",

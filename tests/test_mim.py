@@ -1,3 +1,5 @@
+import pytest
+
 from mim_ai import Mim, MimConfig
 
 
@@ -34,6 +36,73 @@ def test_mim_chatbot_does_not_construct_disabled_integrations():
     assert app._intents is None
     assert app._audit is None
     assert app._normalizer_log is None
+
+
+def test_mim_from_config_injects_per_app_tool_registry():
+    from mim_ai.chatbot import ToolRegistry
+
+    tools = ToolRegistry()
+    app = Mim(
+        MimConfig.from_dict({
+            "chatbot": {
+                "enabled": True,
+                "use_normalizer": False,
+                "use_intents": False,
+                "use_audit_log": False,
+                "use_normalizer_log": False,
+            }
+        }),
+        tool_registry=tools,
+    )
+
+    assert app.chatbot.registry is tools
+
+
+def test_mim_loads_intent_scoped_tools_from_config(tmp_path):
+    from mim_ai.chatbot import ToolRegistry
+    from mim_ai.chatbot.tools import ToolSpec
+
+    intents_path = tmp_path / "intents.yaml"
+    intents_path.write_text(
+        "intents:\n"
+        "  - name: check_order\n"
+        "    description: Read order information.\n"
+        "    examples: [check order]\n"
+        "    tools: [lookup_order]\n",
+        encoding="utf-8",
+    )
+    tools = ToolRegistry()
+    app = Mim(
+        MimConfig.from_dict({
+            "chatbot": {
+                "enabled": True,
+                "enable_tools": True,
+                "use_intents": True,
+                "use_normalizer": False,
+                "use_audit_log": False,
+                "use_normalizer_log": False,
+            },
+            "intents": {
+                "enabled": True,
+                "strategy": "rule",
+                "intents_path": str(intents_path),
+            },
+        }),
+        tool_registry=tools,
+    )
+
+    with pytest.raises(ValueError, match="unregistered tools"):
+        _ = app.chatbot
+
+    tools.register(ToolSpec(
+        name="lookup_order",
+        description="Read order information.",
+        params={},
+        fn=lambda: "found",
+        required=[],
+    ))
+
+    assert app.chatbot.intents.all()[0].tool_names == ["lookup_order"]
 
 
 def test_chatbot_does_not_fallback_to_normalizer_when_globally_disabled():

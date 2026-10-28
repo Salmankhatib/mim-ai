@@ -137,29 +137,66 @@ class OpenAICompatibleProvider:
 
     # -----------------------------------------------------------------
     def _parse(self, payload: dict) -> LLMResponse:
-        try:
-            choice = payload["choices"][0]
-            msg = choice["message"]
-        except (KeyError, IndexError) as e:
-            raise LLMError(f"Unexpected payload shape: {e}") from e
+        if not isinstance(payload, dict):
+            raise LLMError("Unexpected payload shape: response must be an object")
+        choices = payload.get("choices")
+        if (
+            not isinstance(choices, list)
+            or not choices
+            or not isinstance(choices[0], dict)
+        ):
+            raise LLMError("Unexpected payload shape: missing choices[0]")
+        msg = choices[0].get("message")
+        if not isinstance(msg, dict):
+            raise LLMError(
+                "Unexpected payload shape: choices[0].message must be an object"
+            )
+        content = msg.get("content")
+        if content is not None and not isinstance(content, str):
+            raise LLMError(
+                "Unexpected payload shape: message content must be text or null"
+            )
 
         tool_calls: list[ToolCall] = []
-        for tc in msg.get("tool_calls") or []:
-            fn = tc.get("function", {})
+        raw_tool_calls = msg.get("tool_calls") or []
+        if not isinstance(raw_tool_calls, list):
+            raise LLMError(
+                "Unexpected payload shape: message tool_calls must be a list"
+            )
+        for tc in raw_tool_calls:
+            if not isinstance(tc, dict):
+                raise LLMError(
+                    "Unexpected payload shape: each tool call must be an object"
+                )
+            fn = tc.get("function")
+            if not isinstance(fn, dict):
+                raise LLMError(
+                    "Unexpected payload shape: tool call function must be an object"
+                )
+            name = fn.get("name")
+            if not isinstance(name, str) or not name:
+                raise LLMError(
+                    "Unexpected payload shape: tool call is missing a function name"
+                )
+            raw_arguments = fn.get("arguments") or "{}"
             try:
-                args = json.loads(fn.get("arguments") or "{}")
-            except json.JSONDecodeError as e:
+                args = (
+                    raw_arguments
+                    if isinstance(raw_arguments, dict)
+                    else json.loads(raw_arguments)
+                )
+            except (TypeError, json.JSONDecodeError) as e:
                 raise LLMError("LLM returned invalid JSON tool arguments") from e
             if not isinstance(args, dict):
                 raise LLMError("LLM tool arguments must be a JSON object")
             tool_calls.append(ToolCall(
                 id=tc.get("id", ""),
-                name=fn.get("name", ""),
+                name=name,
                 arguments=args,
             ))
 
         return LLMResponse(
-            content=msg.get("content"),
+            content=content,
             tool_calls=tool_calls,
             raw=payload,
             usage=payload.get("usage", {}),

@@ -111,14 +111,30 @@ class Chatbot:
     ) -> None:
         self.config = config
         self.enabled = config.enabled
-        self.provider = provider if provider is not None else build_provider(config)
         self.registry = registry if registry is not None else get_default_registry()
+        self.intents = intents
+        if self.config.enable_tools and self.intents is not None:
+            if self.intents.has_tool_restrictions:
+                configured_tools = {
+                    name
+                    for intent in self.intents.all()
+                    for name in (intent.tool_names or [])
+                }
+                unknown_tools = configured_tools - {
+                    spec["function"]["name"] for spec in self.registry.specs()
+                }
+                if unknown_tools:
+                    raise ValueError(
+                        "Intent configuration references unregistered tools: "
+                        + ", ".join(sorted(unknown_tools))
+                    )
+
+        self.provider = provider if provider is not None else build_provider(config)
         self.history = history if history is not None else build_history_store(config)
         self.roles = dict(getattr(config, "roles", {}) or {})
         self.normalizer = normalizer
         self.audit = audit
         self.normalizer_log = normalizer_log
-        self.intents = intents
         self.intent_threshold = getattr(config, "intent_threshold", 0.55)
         self.intent_strategy = intent_strategy
         self.intent_prompt = intent_prompt or (
@@ -250,6 +266,7 @@ class Chatbot:
 
         intent_name = None
         intent_score = 0.0
+        matched_intent = None
         messages = self._build_messages(session_id, user_text)
 
         tool_calls_made: list[dict] = []
@@ -271,17 +288,29 @@ class Chatbot:
                         user_text, self.provider, self.intent_prompt
                     )
                 if match is not None:
+                    matched_intent = match
                     intent_name, intent_score = match.name, float(score)
+
+            allowed_tool_names = None
+            if (
+                self.config.use_intents
+                and self.intents is not None
+                and self.intents.has_tool_restrictions
+            ):
+                allowed_tool_names = set(
+                    matched_intent.tool_names or []
+                ) if matched_intent is not None else set()
 
             while True:
                 remaining_tool_calls = (
                     self.config.max_tool_calls - len(tool_calls_made)
                 )
                 tool_schemas = (
-                    self.registry.specs()
+                    self.registry.specs(allowed_tool_names)
                     if (
                         self.config.enable_tools
                         and self.registry
+                        and allowed_tool_names != set()
                         and remaining_tool_calls > 0
                     )
                     else None
@@ -309,12 +338,31 @@ class Chatbot:
                         "chatbot.max_tool_calls allows"
                     )
 
+                for call in response.tool_calls:
+                    if call.name not in self.registry:
+                        raise LLMError(f"LLM requested unregistered tool {call.name!r}")
+                    if (
+                        allowed_tool_names is not None
+                        and call.name not in allowed_tool_names
+                    ):
+                        raise LLMError(
+                            f"Tool {call.name!r} is not allowed for intent "
+                            f"{intent_name or 'unknown'}"
+                        )
+
                 # Append the assistant's tool-call message verbatim.
                 messages.append(self._assistant_tool_msg(response.tool_calls))
 
                 # Execute each tool and append its result.
                 for call in response.tool_calls:
-                    result = self.registry.execute(call.name, call.arguments)
+                    try:
+                        result = self.registry.execute(
+                            call.name,
+                            call.arguments,
+                            allowed_names=allowed_tool_names,
+                        )
+                    except (TypeError, ValueError, PermissionError) as exc:
+                        raise LLMError(f"Invalid tool call: {exc}") from exc
                     tool_calls_made.append({
                         "name": call.name, "args": call.arguments,
                     })
