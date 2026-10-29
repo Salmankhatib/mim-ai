@@ -58,6 +58,7 @@ tmp/
 ## Miscellaneous
 /TODO.md
 # Press
-press/
-social/
-video/
+
+docs/press/
+docs/social/
+docs/video/
