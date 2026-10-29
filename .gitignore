@@ -12,6 +12,7 @@ __pycache__/
 venv/
 env/
 
+
 # Tooling and caches
 .pytest_cache/
 .mypy_cache/
@@ -56,3 +57,7 @@ tmp/
 
 ## Miscellaneous
 /TODO.md
+# Press
+press/
+social/
+video/
