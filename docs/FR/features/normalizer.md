@@ -20,7 +20,7 @@ Le normalizer est un pipeline en deux couches :
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("config.yaml")
+app = Mim.from_config("mim_config.yaml")
 text = "salam wa7ed 3la ekher, bghit n3ref kifach nt3amro app?"
 print(app.normalizer.normalize(text))
 ```

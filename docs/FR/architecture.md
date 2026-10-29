@@ -52,7 +52,7 @@ L’application suit un modèle de composition hiérarchique :
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("config.yaml")
+app = Mim.from_config("mim_config.yaml")
 ```
 
 À l’exécution, les sous-systèmes sont créés à la demande. Si une fonctionnalité est désactivée dans la config, elle n’est pas construite.

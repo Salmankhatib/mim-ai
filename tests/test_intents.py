@@ -633,10 +633,17 @@ def test_chatbot_enforces_tool_call_limit_per_turn():
     assert "max_tool_calls" in reply.error
 
 
-def test_chatbot_llm_error_is_not_stored_as_successful_reply():
+def test_chatbot_llm_error_does_not_leave_an_unmatched_user_turn():
     class FakeProvider:
+        calls = 0
+
         def chat(self, messages, tools=None):
-            raise LLMError("provider down")
+            self.calls += 1
+            if self.calls == 1:
+                raise LLMError("provider down")
+            from mim_ai.chatbot.llm import LLMResponse
+
+            return LLMResponse(content="recovered")
 
     class FakeAudit:
         def __init__(self):
@@ -669,10 +676,16 @@ def test_chatbot_llm_error_is_not_stored_as_successful_reply():
 
     assert reply.text == ""
     assert reply.error == "provider down"
-    assert hist["s_err"] == [{"role": "user", "content": "bonjour"}]
+    assert hist.get("s_err", []) == []
     assert audit.events[0]["status"] == "error"
     assert audit.events[0]["output_text"] == ""
     assert audit.events[0]["extra"]["error"] == "provider down"
+    recovered = bot.chat("next turn", session_id="s_err")
+    assert recovered.text == "recovered"
+    assert hist["s_err"] == [
+        {"role": "user", "content": "next turn"},
+        {"role": "assistant", "content": "recovered"},
+    ]
 
 
 def test_chatbot_component_flags_override_injected_integrations():

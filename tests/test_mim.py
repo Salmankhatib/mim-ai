@@ -187,6 +187,17 @@ def test_init_cli_creates_config_and_reports_path(tmp_path, monkeypatch, capsys)
     assert f"Config ready at {config_path}" in capsys.readouterr().out
 
 
+def test_init_cli_defaults_to_canonical_mim_config_name(tmp_path, monkeypatch, capsys):
+    from mim_ai.__main__ import init_main
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("sys.argv", ["mim-init"])
+
+    assert init_main() == 0
+    assert (tmp_path / "mim_config.yaml").is_file()
+    assert "Config ready at mim_config.yaml" in capsys.readouterr().out
+
+
 def test_generated_default_config_runs_normalizer_outside_repository(
     tmp_path, monkeypatch
 ):
@@ -199,5 +210,12 @@ def test_generated_default_config_runs_normalizer_outside_repository(
     normalized = app.normalizer.normalize("salam wa7ed 3la ekher")
 
     assert normalized == "salam wa7ed 3la ekher"
-    assert (tmp_path / "config.yaml").is_file()
+    assert (tmp_path / "mim_config.yaml").is_file()
+    app.shutdown()
+
+
+def test_mim_shutdown_does_not_keep_an_unused_logs_attribute():
+    app = Mim(MimConfig.from_dict({}))
+
+    assert not hasattr(app, "_logs")
     app.shutdown()

@@ -5,7 +5,7 @@ mim_ai.voice.pipeline
 Full voice pipeline, driven entirely by MimConfig.
 
     from mim_ai import load_config, VoicePipeline
-    cfg = load_config("config.yaml")
+    cfg = load_config("mim_config.yaml")
     vp = VoicePipeline(cfg.voice, cfg.stt, cfg.tts,
                        chatbot=bot, intents=intents, audit=audit, normalizer=norm)
     reply = vp.listen_and_reply(session_id="user-42")

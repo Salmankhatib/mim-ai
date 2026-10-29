@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -318,11 +317,7 @@ def test_missing_dictionary_override_path_is_reported():
 
 def test_default_and_custom_skip_lists_keep_darija_mappable():
     dict_obj = ArabiziDictionary.from_config(
-        RulesConfig(
-            skip_words_path=str(
-                Path(__file__).resolve().parents[1] / "darija" / "skip_words.yaml"
-            )
-        )
+        RulesConfig()
     )
 
     assert dict_obj.lookup("salam") == "salam"

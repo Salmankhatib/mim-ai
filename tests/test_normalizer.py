@@ -261,28 +261,31 @@ class TestTextInvariants:
 
 class TestConfigAndWiring:
 
-    def test_example_yaml_is_the_default_loader_target(self):
-        from mim_ai import load_config
+    def test_generated_mim_config_is_the_default_config_template(self, tmp_path):
+        from mim_ai import load_config, write_default_config
 
-        cfg = load_config("config.yaml")
+        config_path = write_default_config(tmp_path / "mim_config.yaml")
+        cfg = load_config(config_path)
         assert cfg.normalizer.enabled is True
         assert cfg.audit.enabled is True
         assert cfg.logs.enabled is True
 
-    def test_logger_switches_are_config_driven(self):
-        from mim_ai import load_config
+    def test_logger_switches_are_config_driven(self, tmp_path):
+        from mim_ai import load_config, write_default_config
 
-        cfg = load_config("config.yaml")
+        config_path = write_default_config(tmp_path / "mim_config.yaml")
+        cfg = load_config(config_path)
         cfg.audit.enabled = False
         cfg.logs.enabled = False
 
         assert cfg.audit.enabled is False
         assert cfg.logs.enabled is False
 
-    def test_normalizer_has_only_two_layers(self):
-        from mim_ai import load_config
+    def test_normalizer_has_only_two_layers(self, tmp_path):
+        from mim_ai import load_config, write_default_config
 
-        cfg = load_config("config.yaml")
+        config_path = write_default_config(tmp_path / "mim_config.yaml")
+        cfg = load_config(config_path)
         assert cfg.normalizer.enabled is True
         assert hasattr(cfg.normalizer, "cleaning")
         assert hasattr(cfg.normalizer, "rules")
@@ -351,10 +354,11 @@ def test_optional_subsystems_stay_lazy_loaded():
     assert hasattr(mim_ai, "Mim")
 
 
-def test_readme_local_dev_flow_works_without_external_llm():
-    from mim_ai import Mim, anonymizer
+def test_readme_local_dev_flow_works_without_external_llm(tmp_path):
+    from mim_ai import Mim, anonymizer, write_default_config
 
-    app = Mim.from_config("config.yaml")
+    config_path = write_default_config(tmp_path / "mim_config.yaml")
+    app = Mim.from_config(str(config_path))
     normalized = app.normalizer.normalize("salam wa7ed 3la ekher")
     result = anonymizer.anonymize("Mon CIN est AB58075 et mon tel est 0612345678")
 

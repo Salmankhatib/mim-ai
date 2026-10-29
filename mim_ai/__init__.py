@@ -5,8 +5,7 @@ mim_ai
 Config-first, model-agnostic toolkit for Moroccan Darija AI.
 
     from mim_ai import Mim
-
-    mim = Mim.from_config("config.yaml")
+    mim = Mim.from_config("mim_config.yaml")
 
     # Chat
     reply = mim.chat("salam, chkoun nta?", session_id="u1")
@@ -23,6 +22,7 @@ Config-first, model-agnostic toolkit for Moroccan Darija AI.
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .config import MimConfig, load_config, write_default_config
@@ -73,13 +73,12 @@ class Mim:
         self._intents = None
         self._audit = None
         self._normalizer_log = None
-        self._logs = None
         self._chatbot = None
         self._voice = None
 
     @classmethod
     def from_config(
-        cls, path: str = "config.yaml", *, tool_registry: ToolRegistry | None = None
+        cls, path: str | Path = "mim_config.yaml", *, tool_registry: ToolRegistry | None = None
     ) -> "Mim":
         return cls(load_config(path), tool_registry=tool_registry)
 
@@ -214,7 +213,7 @@ class Mim:
         seen: set[int] = set()
         try:
             for component in (
-                self._voice, self._chatbot, self._audit, self._logs,
+                self._voice, self._chatbot, self._audit,
                 self._normalizer_log, self._intents, self._normalizer,
             ):
                 if component is None or id(component) in seen:
@@ -224,7 +223,7 @@ class Mim:
                 if callable(close):
                     close()
         finally:
-            for attr in ("_voice", "_chatbot", "_audit", "_logs", "_normalizer_log", "_intents", "_normalizer"):
+            for attr in ("_voice", "_chatbot", "_audit", "_normalizer_log", "_intents", "_normalizer"):
                 setattr(self, attr, None)
 
 

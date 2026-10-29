@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import io
-import os
 import uuid
 import wave
 from pathlib import Path
@@ -9,7 +8,7 @@ from pathlib import Path
 import numpy as np
 from pydub import AudioSegment
 
-from mim_ai import Mim
+from mim_ai import Mim, load_config
 from mim_ai.voice.stt import STT
 from mim_ai.voice.tts import TTS
 
@@ -18,8 +17,26 @@ class MimService:
     def __init__(self, config_path: str | Path) -> None:
         self.config_path = Path(config_path).resolve()
         self.project_root = self.config_path.parent
-        os.chdir(self.project_root)
-        self.mim = Mim.from_config(str(self.config_path))
+        config = load_config(self.config_path)
+        path_values = [
+            (config.normalizer.rules, "arabizi_dict_path"),
+            (config.normalizer.rules, "skip_words_path"),
+            (config.intents, "intents_path"),
+            (config.chatbot, "system_prompt_file"),
+            (config.audit, "db_path"),
+            (config.audit, "jsonl_path"),
+            (config.logs, "db_path"),
+            (config.logs, "jsonl_path"),
+        ]
+        if config.chatbot.history_backend == "sqlite":
+            path_values.append((config.chatbot, "history_dsn"))
+        for section, key in path_values:
+            value = getattr(section, key, None)
+            if value:
+                path = Path(value)
+                if not path.is_absolute():
+                    setattr(section, key, str(self.project_root / path))
+        self.mim = Mim(config)
 
     def normalize_text(self, text: str) -> dict:
         if not self.mim.config.normalizer.enabled:
@@ -122,7 +139,6 @@ class MimService:
         buffer = io.BytesIO(file_bytes)
         if suffix == ".wav":
             with wave.open(buffer, "rb") as wav:
-                frame_rate = wav.getframerate()
                 channels = wav.getnchannels()
                 sample_width = wav.getsampwidth()
                 nframes = wav.getnframes()

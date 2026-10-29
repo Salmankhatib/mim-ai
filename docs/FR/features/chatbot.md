@@ -13,7 +13,7 @@ Les développeurs n’ont pas envie de reconstruire la même pile de conversatio
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("config.yaml")
+app = Mim.from_config("mim_config.yaml")
 reply = app.chat("salam, chkoun nta?", session_id="demo")
 print(reply.text)
 if reply.error:
@@ -61,7 +61,7 @@ def lookup_order(order_id: str) -> str:
     ).fetchone()
     return row["status"] if row else "not found"
 
-app = Mim.from_config("config.yaml", tool_registry=tools)
+app = Mim.from_config("mim_config.yaml", tool_registry=tools)
 ```
 
 Les arguments du modèle sont non fiables : les types, les champs obligatoires et les champs supplémentaires sont validés avant l’appel. La fonction de l’application doit aussi vérifier les autorisations et les règles métier. Pour SQL, utilisez des paramètres liés pour les valeurs et des identifiants fixes ou autorisés par liste ; n’insérez jamais directement du texte utilisateur dans une requête. Le SDK ne fournit pas d’outil SQL générique et ne peut pas sécuriser automatiquement les fonctions fournies par l’application.

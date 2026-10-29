@@ -23,7 +23,7 @@ examples/moroccan_app_example/
 │   └── services.py
 ├── templates/
 │   └── index.html
-├── config.yaml
+├── mim_config.yaml
 ├── intents.yaml
 ├── pyproject.toml
 └── README.md
@@ -31,9 +31,10 @@ examples/moroccan_app_example/
 
 ## Quick start
 
-From this directory:
+From the repository root:
 
 ```bash
+cd examples/moroccan_app_example
 python -m pip install -U pip
 python -m pip install -e ../..
 python -m pip install fastapi uvicorn jinja2 python-multipart pydub
@@ -44,7 +45,7 @@ Install ffmpeg and make sure it is available on PATH for real `.mp3` uploads and
 Then run:
 
 ```bash
-export MIM_APP_TOKEN="demo-moroccan-token"
+export MIM_APP_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -59,7 +60,7 @@ Open:
 
 ```bash
 curl -X POST http://localhost:8000/api/normalize \
-  -H "Authorization: Bearer demo-moroccan-token" \
+  -H "Authorization: Bearer $MIM_APP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"text": "salam wa7ed 3la ekher"}'
 ```
@@ -68,7 +69,7 @@ curl -X POST http://localhost:8000/api/normalize \
 
 ```bash
 curl -X POST http://localhost:8000/api/chat \
-  -H "Authorization: Bearer demo-moroccan-token" \
+  -H "Authorization: Bearer $MIM_APP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"message": "salam, bghit n3ref status lorder dyali", "session_id": "demo-session"}'
 ```
@@ -77,7 +78,7 @@ curl -X POST http://localhost:8000/api/chat \
 
 ```bash
 curl -X POST http://localhost:8000/api/transcribe \
-  -H "Authorization: Bearer demo-moroccan-token" \
+  -H "Authorization: Bearer $MIM_APP_TOKEN" \
   -F "audio_file=@demo.wav"
 ```
 
@@ -85,13 +86,13 @@ curl -X POST http://localhost:8000/api/transcribe \
 
 ```bash
 curl -X POST http://localhost:8000/api/read-out \
-  -H "Authorization: Bearer demo-moroccan-token" \
+  -H "Authorization: Bearer $MIM_APP_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"text": "Salam, service dyalna 3ndek."}' --output audio.wav
 ```
 
 ## Notes
 
-- The example root config is in `config.yaml` and is loaded automatically by the app.
+- The example root config is in `mim_config.yaml` and is loaded by the app. Relative data and storage paths are resolved from that file, without changing the process working directory. Set `MIM_APP_TOKEN` to a strong, private value before starting the server; protected routes fail closed if it is missing.
 - Chat, STT, and TTS routes are wired to the MIM config and will work when the configured providers are reachable and credentials are valid.
 - Local-safe logic like normalization and audit logging works without external provider keys.

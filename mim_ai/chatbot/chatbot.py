@@ -376,8 +376,8 @@ class Chatbot:
             final_text = ""
 
         # --- 5. Persist history --------------------------------------
-        self.history.append(session_id, {"role": "user",      "content": user_text})
         if final_text:
+            self.history.append(session_id, {"role": "user", "content": user_text})
             self.history.append(session_id, {"role": "assistant", "content": final_text})
 
         duration_ms = int((time.perf_counter() - t0) * 1000)

@@ -54,8 +54,8 @@ This release covers the full pipeline: text normalization → PII anonymization 
 - Backends: SQLite (default), PostgreSQL, MySQL, MongoDB, JSONL file
 
 #### ⚙️ Config System
-- Single `config.yaml` controls every subsystem
-- `Mim.from_config("config.yaml")` — one line to start
+- Single `mim_config.yaml` controls every subsystem
+- `Mim.from_config("mim_config.yaml")` — one line to start
 - `mim-init` CLI command generates the default config in your project
 - All subsystems are **lazily loaded** — unused modules are never imported
 

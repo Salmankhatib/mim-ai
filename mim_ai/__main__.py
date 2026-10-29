@@ -8,7 +8,7 @@ from .config import write_default_config
 def init_main() -> int:
     parser = argparse.ArgumentParser(description="Create a MIM config file.")
     parser.add_argument(
-        "path", nargs="?", default="config.yaml", help="Target config path"
+        "path", nargs="?", default="mim_config.yaml", help="Target config path"
     )
     args = parser.parse_args()
     created = write_default_config(args.path, overwrite=False)
@@ -25,7 +25,7 @@ def main() -> int:
         help="Create a default config file for a project.",
     )
     parser.add_argument(
-        "path", nargs="?", default="config.yaml", help="Target config path"
+        "path", nargs="?", default="mim_config.yaml", help="Target config path"
     )
     args = parser.parse_args()
 

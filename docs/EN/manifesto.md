@@ -49,7 +49,7 @@ MIM works with MNTRA/Mistral endpoints today and any OpenAI-compatible API tomor
 Compliance is not an afterthought. Every chat turn is logged with a tamper-evident hash chain. Law 09-08 retention schedules run automatically.
 
 **Low-friction developer experience**  
-`pip install mim-ai`. `mim-init`. `Mim.from_config("config.yaml")`. That's the entire setup path.
+`pip install mim-ai`. `mim-init`. `Mim.from_config("mim_config.yaml")`. That's the entire setup path.
 
 **Open for the community**  
 The Arabizi dictionary is a community asset. Every skipped token is logged so real usage drives the next improvement.

@@ -13,7 +13,7 @@ Developers do not want to rebuild the same conversation stack each time. The cha
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("config.yaml")
+app = Mim.from_config("mim_config.yaml")
 reply = app.chat("salam, chkoun nta?", session_id="demo")
 print(reply.text)
 if reply.error:
@@ -98,7 +98,7 @@ def lookup_order(order_id: str) -> str:
     ).fetchone()
     return row["status"] if row else "not found"
 
-app = Mim.from_config("config.yaml", tool_registry=tools)
+app = Mim.from_config("mim_config.yaml", tool_registry=tools)
 ```
 
 Tool arguments are treated as untrusted input: declared types, required fields, and extra fields are checked before dispatch. The tool function must still enforce user authorization, business rules, and database access controls.

@@ -264,7 +264,7 @@ class MimConfig:
         return cfg
 
 
-def write_default_config(path: str | Path = "config.yaml", *, overwrite: bool = False) -> Path:
+def write_default_config(path: str | Path = "mim_config.yaml", *, overwrite: bool = False) -> Path:
     """Create the canonical default config file in the target directory."""
     target = Path(path)
     candidates = [target]
@@ -286,9 +286,9 @@ def write_default_config(path: str | Path = "config.yaml", *, overwrite: bool = 
     raise PermissionError(f"Unable to write default config to {target} or {Path.home() / target.name}")
 
 
-def load_config(path: str | Path | None = "config.yaml") -> MimConfig:
+def load_config(path: str | Path | None = "mim_config.yaml") -> MimConfig:
     """Load an existing application config without creating or discovering files."""
-    target = Path(path or "config.yaml")
+    target = Path(path or "mim_config.yaml")
     if not target.is_file():
         raise FileNotFoundError(
             f"Config file not found: {target}. Create one with `mim-init {target}` "

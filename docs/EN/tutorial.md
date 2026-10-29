@@ -16,12 +16,12 @@ pip install -e .
 
 ## 2. Start from the shipped config
 
-The package assumes a config-first workflow. The default example file is `config.yaml`.
+The package assumes a config-first workflow. Generate the canonical `mim_config.yaml` with `mim-init`.
 
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("config.yaml")
+app = Mim.from_config("mim_config.yaml")
 ```
 
 ## 3. Normalize Darija text
@@ -85,7 +85,7 @@ A small app can be built with:
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("config.yaml")
+app = Mim.from_config("mim_config.yaml")
 
 raw = "salam, 3ndna 9a9a"
 clean = app.normalizer.normalize(raw)

@@ -77,7 +77,7 @@ pip install "mim-ai[anonymizer]"
 mim-init
 ```
 
-This creates a default `config.yaml` in the current project directory. Review its endpoint, model, and enable/disable settings before using remote or optional features.
+This creates the canonical `mim_config.yaml` in the current project directory. Review its endpoint, model, and enable/disable settings before using remote or optional features.
 
 ### 3. Use It
 
@@ -85,7 +85,7 @@ This creates a default `config.yaml` in the current project directory. Review it
 from mim_ai import Mim
 
 # Load the config generated above. Components initialize only when used.
-mim = Mim.from_config("config.yaml")
+mim = Mim.from_config("mim_config.yaml")
 
 # Normalization works with the base install; it does not call a model endpoint.
 normalized = mim.normalizer.normalize("salam wa7ed 3la ekher")
@@ -94,9 +94,9 @@ print(normalized)  # salam wa7ed 3la ekher
 mim.shutdown()
 ```
 
-`load_config()` only reads the exact file path requested and never creates config files or searches legacy filenames. Run `mim-init` (or call `write_default_config()`) explicitly before loading a generated config.
+`load_config()` defaults to `mim_config.yaml`, reads only that exact file, and never creates config files or searches legacy filenames. Run `mim-init` (or call `write_default_config()`) explicitly before loading a generated config.
 
-To use chat, set the API key named by `chatbot.llm_api_key_env` in your environment and configure `chatbot.llm_endpoint` and `chatbot.llm_model` in `config.yaml`. The default chatbot endpoint is MNTRA's OpenAI-compatible API and expects `MNTRA_API_KEY`; compatible endpoints that do not require authentication can leave the key unset.
+To use chat, set the API key named by `chatbot.llm_api_key_env` in your environment and configure `chatbot.llm_endpoint` and `chatbot.llm_model` in `mim_config.yaml`. The default chatbot endpoint is MNTRA's OpenAI-compatible API and expects `MNTRA_API_KEY`; compatible endpoints that do not require authentication can leave the key unset.
 
 The generated config starts with tools and intent classification disabled, so chat is a regular text-completion flow by default. Set `chatbot.system_prompt` to your full custom prompt; `system_prompt_extra` and `system_prompt_file` let you add reusable instructions:
 
@@ -119,7 +119,7 @@ chatbot:
 ```python
 from mim_ai import Mim
 
-mim = Mim.from_config("config.yaml")
+mim = Mim.from_config("mim_config.yaml")
 message = input("You: ").strip()
 if message:
     reply = mim.chat(message, session_id="user-42")
@@ -199,7 +199,7 @@ Verify a configured audit chain with the same backend settings:
 from mim_ai import load_config
 from mim_ai.audit import verify_chain
 
-audit_config = load_config("config.yaml").audit
+audit_config = load_config("mim_config.yaml").audit
 ok, message = verify_chain(config=audit_config)
 ```
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import io
-import os
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
@@ -14,10 +13,9 @@ from .auth import require_api_key
 from .services import MimService
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-os.chdir(PROJECT_ROOT)
 
 app = FastAPI(title="Moroccan App Example", version="0.1.0")
-service = MimService(PROJECT_ROOT / "config.yaml")
+service = MimService(PROJECT_ROOT / "mim_config.yaml")
 templates = Jinja2Templates(directory=str(PROJECT_ROOT / "templates"))
 
 

@@ -12,19 +12,19 @@ Installez le support vocal et ses dépendances audio Python :
 pip install "mim-ai[voice]"
 ```
 
-La voix utilise les périphériques microphone et haut-parleur par défaut. Le système peut également nécessiter des bibliothèques audio (par exemple PortAudio sous Linux). Configurez des endpoints STT/TTS accessibles dans `config.yaml`, puis définissez dans l’environnement les clés API indiquées par `stt.api_key_env` et `tts.api_key_env`. Si le pipeline vocal utilise le chatbot, définissez également `chatbot.llm_api_key_env`.
+La voix utilise les périphériques microphone et haut-parleur par défaut. Le système peut également nécessiter des bibliothèques audio (par exemple PortAudio sous Linux). Configurez des endpoints STT/TTS accessibles dans `mim_config.yaml`, puis définissez dans l’environnement les clés API indiquées par `stt.api_key_env` et `tts.api_key_env`. Si le pipeline vocal utilise le chatbot, définissez également `chatbot.llm_api_key_env`.
 
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("config.yaml")
+app = Mim.from_config("mim_config.yaml")
 reply = app.listen_and_reply(session_id="demo")
 print(reply.transcript, reply.reply_text)
 ```
 
 Dans une application asyncio, appelez `await app.alisten_and_reply(...)` pour ne pas bloquer la boucle d’événements. Les requêtes STT/TTS utilisent `max_retries` et `retry_backoff_ms` ; définissez le nombre de tentatives à `0` pour les désactiver.
 
-La capture utilise une détection VAD par énergie RMS. `voice.vad.threshold` est une amplitude RMS normalisée (valeur par défaut : `0.015`) ; `min_speech_ms` filtre les sons brefs, `min_silence_ms` termine une phrase, `pre_roll_ms` conserve son début, et `start_timeout_ms` évite l’appel STT si aucun son n’est détecté (`reply.status == "no_speech"`). `max_record_seconds` limite la durée. Cette méthode utilise un seuil, pas un classificateur vocal ; augmentez-le dans les environnements bruyants.
+La capture utilise une détection VAD par énergie RMS à seuil fixe. `voice.vad.threshold` est une amplitude RMS normalisée (valeur par défaut : `0.015`) ; `min_speech_ms` filtre les sons brefs, `min_silence_ms` termine une phrase, `pre_roll_ms` conserve son début, et `start_timeout_ms` évite l’appel STT si aucun son n’est détecté (`reply.status == "no_speech"`). `max_record_seconds` limite la durée. Il n’y a pas d’adaptation au bruit ambiant ni de classificateur vocal : dans un centre d’appels ou un environnement bruyant, un seuil fixe peut déclencher à tort ou manquer la parole. Calibrez `threshold` selon le microphone et l’environnement ; pour les déploiements exigeants, utilisez un VAD conçu pour résister au bruit.
 
 En l’absence de microphone ou de haut-parleur, les opérations audio lèvent `AudioError` au lieu d’envoyer du silence artificiel ou d’ignorer l’échec.
 
@@ -39,7 +39,7 @@ La voix est l’un des moyens les plus naturels d’interagir avec une applicati
 ```python
 from mim_ai import Mim
 
-app = Mim.from_config("config.yaml")
+app = Mim.from_config("mim_config.yaml")
 reply = app.listen_and_reply(session_id="demo")
 print(reply.transcript)
 print(reply.reply_text)

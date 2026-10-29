@@ -471,13 +471,13 @@ def test_load_config_is_read_only_when_config_is_missing(tmp_path, monkeypatch):
     from mim_ai.config import write_default_config
 
     monkeypatch.chdir(tmp_path)
-    with pytest.raises(FileNotFoundError, match="mim-init"):
-        load_config("config.yaml")
-    assert not (tmp_path / "config.yaml").exists()
+    with pytest.raises(FileNotFoundError, match="mim_config.yaml"):
+        load_config()
+    assert not (tmp_path / "mim_config.yaml").exists()
 
-    write_default_config("config.yaml")
-    cfg = load_config("config.yaml")
-    assert (tmp_path / "config.yaml").exists()
+    write_default_config()
+    cfg = load_config()
+    assert (tmp_path / "mim_config.yaml").exists()
     assert cfg.chatbot.enabled is True
     assert cfg.voice.enabled is True
 
@@ -486,9 +486,9 @@ def test_load_config_does_not_discover_legacy_alias(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "mimExemple.yaml").write_text("chatbot:\n  enabled: true\n", encoding="utf-8")
 
-    with pytest.raises(FileNotFoundError, match="config.yaml"):
+    with pytest.raises(FileNotFoundError, match="mim_config.yaml"):
         load_config()
-    assert not (tmp_path / "config.yaml").exists()
+    assert not (tmp_path / "mim_config.yaml").exists()
 
 
 def test_mim_config_ignores_unknown_keys(tmp_path):
