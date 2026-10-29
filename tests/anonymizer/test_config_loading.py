@@ -19,11 +19,19 @@ def test_yaml_and_dict_config_loading(tmp_path):
     loaded_from_file = load_config(str(config_path))
     assert isinstance(loaded_from_file, AnonymizerConfig)
     assert loaded_from_file.enabled is True
+    assert loaded_from_file.language == "en"
     assert loaded_from_file.default_operators["CIN_MA"] == "replace"
 
     loaded_from_dict = load_config({"enabled": False, "custom_patterns": [{"name": "X", "pattern": "abc"}]})
     assert loaded_from_dict.enabled is False
     assert loaded_from_dict.custom_patterns[0]["name"] == "X"
+
+
+def test_unsupported_anonymizer_language_fails_explicitly():
+    import pytest
+
+    with pytest.raises(ValueError, match="only language='en'"):
+        AnonymizerConfig.from_mapping({"language": "fr"})
 
 
 def test_full_application_yaml_loads_nested_anonymizer_config(tmp_path):

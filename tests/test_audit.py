@@ -202,6 +202,147 @@ def test_audit_logger_supports_custom_sqlite_collection(tmp_path):
     logger.close()
 
 
+def test_jsonl_audit_chain_can_be_verified_from_config(tmp_path):
+    config = AuditConfig(
+        backend="jsonl",
+        jsonl_path=str(tmp_path / "audit-jsonl"),
+        collection="customer_audit",
+        purge_on_start=False,
+    )
+    logger = AuditLogger(config)
+    logger.emit(event="first", trace_id="jsonl-1")
+    logger.emit(event="second", trace_id="jsonl-2")
+    logger.close()
+
+    assert verify_chain(config=config) == (True, "chain intact")
+
+
+@pytest.mark.parametrize("backend_name", ["postgresql", "mysql", "mongodb"])
+def test_native_database_audit_chains_can_be_verified_without_live_services(
+    backend_name, monkeypatch
+):
+    from mim_ai.audit.audit_logger import _line_hash
+
+    first = {"event": "first", "prev_hash": None}
+    first["line_hash"] = _line_hash(first)
+    second = {"event": "second", "prev_hash": first["line_hash"]}
+    second["line_hash"] = _line_hash(second)
+    records = [first, second]
+    query = {}
+
+    class FakeCursor:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def execute(self, statement):
+            query["statement"] = statement
+
+        def fetchall(self):
+            return [(json.dumps(record),) for record in records]
+
+    class FakeConnection:
+        def cursor(self):
+            return FakeCursor()
+
+    if backend_name == "postgresql":
+        monkeypatch.setattr(
+            PostgreSQLBackend,
+            "_connect",
+            lambda self, initialize=True: FakeConnection(),
+        )
+        database_url = "postgresql://db.example/app"
+    elif backend_name == "mysql":
+        monkeypatch.setattr(
+            MySQLBackend,
+            "_connect",
+            lambda self, initialize=True: FakeConnection(),
+        )
+        database_url = "mysql://db.example/app"
+    else:
+        class FakeCollection:
+            def find(self, filter, *, sort):
+                query["sort"] = sort
+                return records
+
+        monkeypatch.setattr(
+            MongoDBBackend, "_connect", lambda self: FakeCollection()
+        )
+        database_url = "mongodb://db.example/app"
+
+    config = AuditConfig(
+        backend=backend_name,
+        database_url=database_url,
+        purge_on_start=False,
+    )
+
+    assert verify_chain(config=config) == (True, "chain intact")
+    if backend_name == "mongodb":
+        assert query["sort"] == [("_id", 1)]
+    else:
+        assert "ORDER BY id" in query["statement"]
+
+
+def test_custom_audit_adapter_verification_requires_ordered_records():
+    class VerifiableAdapter(RecordingAdapter):
+        def iter_chain_records(self):
+            return self.rows
+
+    adapter = VerifiableAdapter(
+        table="audit_events", dsn=None, collection="audit_events", driver="custom"
+    )
+    config = AuditConfig(
+        backend="custom",
+        adapter=adapter,
+        purge_on_start=False,
+    )
+    logger = AuditLogger(config)
+    logger.emit(event="custom", trace_id="adapter-1")
+
+    assert verify_chain(config=config) == (True, "chain intact")
+    logger.close()
+
+
+def test_custom_audit_adapter_can_use_non_sql_collection_name():
+    class VerifiableAdapter(RecordingAdapter):
+        def iter_chain_records(self):
+            return self.rows
+
+    adapter = VerifiableAdapter(
+        table="customer.audit-events",
+        dsn=None,
+        collection="customer.audit-events",
+        driver="custom",
+    )
+    config = AuditConfig(
+        backend="custom",
+        adapter=adapter,
+        collection="customer.audit-events",
+        purge_on_start=False,
+    )
+    logger = AuditLogger(config)
+    logger.emit(event="custom", trace_id="adapter-custom-name")
+
+    assert verify_chain(config=config) == (True, "chain intact")
+    logger.close()
+
+
+def test_custom_audit_adapter_without_reader_is_not_reported_intact():
+    config = AuditConfig(
+        backend="custom",
+        adapter=RecordingAdapter,
+        purge_on_start=False,
+    )
+    logger = AuditLogger(config)
+    logger.emit(event="custom", trace_id="adapter-no-reader")
+
+    with pytest.raises(NotImplementedError, match="iter_chain_records"):
+        verify_chain(config=config)
+    logger.close()
+
+
 def test_normalizer_logger_supports_custom_sqlite_collection(tmp_path):
     logger = NormalizerLogger(
         NormalizerLogConfig(
@@ -326,23 +467,28 @@ def test_chatbot_supports_prompt_file_and_personalized_params(tmp_path):
     assert cfg.chatbot.roles["assistant"] == "concierge"
 
 
-def test_load_config_creates_default_yaml_when_missing(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    cfg = load_config("config.yaml")
+def test_load_config_is_read_only_when_config_is_missing(tmp_path, monkeypatch):
+    from mim_ai.config import write_default_config
 
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(FileNotFoundError, match="mim-init"):
+        load_config("config.yaml")
+    assert not (tmp_path / "config.yaml").exists()
+
+    write_default_config("config.yaml")
+    cfg = load_config("config.yaml")
     assert (tmp_path / "config.yaml").exists()
     assert cfg.chatbot.enabled is True
     assert cfg.voice.enabled is True
 
 
-def test_config_yaml_takes_priority_over_legacy_alias(tmp_path, monkeypatch):
+def test_load_config_does_not_discover_legacy_alias(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config.yaml").write_text("chatbot:\n  enabled: false\n", encoding="utf-8")
     (tmp_path / "mimExemple.yaml").write_text("chatbot:\n  enabled: true\n", encoding="utf-8")
 
-    cfg = load_config()
-
-    assert cfg.chatbot.enabled is False
+    with pytest.raises(FileNotFoundError, match="config.yaml"):
+        load_config()
+    assert not (tmp_path / "config.yaml").exists()
 
 
 def test_mim_config_ignores_unknown_keys(tmp_path):

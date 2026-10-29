@@ -127,7 +127,7 @@ class VoicePipeline:
             if getattr(r, "intent", None):
                 intent_name, intent_score = r.intent, getattr(r, "intent_score", 0.0)
         if self.cfg.use_chatbot and not reply_text and not chat_error:
-            reply_text = "سمح ليا، ما فهمتش."
+            reply_text = self.cfg.fallback_response
 
         # 6. Speak
         audio_out, sr = (None, 0)

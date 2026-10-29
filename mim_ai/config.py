@@ -58,12 +58,15 @@ class VoiceSection:
     use_intents: bool = True
     use_audit_log: bool = True
     use_chatbot: bool = True
+    fallback_response: str = "سمح ليا، ما فهمتش."
     vad: VADConfig = field(default_factory=VADConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
     max_record_seconds: int = 30
     silence_timeout_ms: int | None = None
 
     def __post_init__(self) -> None:
+        if not isinstance(self.fallback_response, str):
+            raise ValueError("voice.fallback_response must be a string")
         if self.max_record_seconds <= 0:
             raise ValueError("voice.max_record_seconds must be positive")
         if self.silence_timeout_ms is not None:
@@ -75,6 +78,7 @@ class VoiceSection:
         cfg = cls()
         raw = data or {}
         for key in ("enabled", "use_normalizer", "use_intents", "use_audit_log", "use_chatbot",
+                    "fallback_response",
                     "max_record_seconds", "silence_timeout_ms"):
             if key in raw:
                 setattr(cfg, key, raw[key])
@@ -96,6 +100,8 @@ class VoiceSection:
             raise ValueError("voice.max_record_seconds must be positive")
         if "silence_timeout_ms" in raw:
             cfg.silence_timeout_ms = raw["silence_timeout_ms"]
+        if not isinstance(cfg.fallback_response, str):
+            raise ValueError("voice.fallback_response must be a string")
         return cfg
 
 
@@ -258,16 +264,6 @@ class MimConfig:
         return cfg
 
 
-def _candidate_paths(path: str | None) -> list[Path]:
-    if path:
-        return [Path(path)]
-    return [
-        Path("config.yaml"),
-        Path("mimExemple.yaml"),
-        Path("mimExemple.yml"),
-    ]
-
-
 def write_default_config(path: str | Path = "config.yaml", *, overwrite: bool = False) -> Path:
     """Create the canonical default config file in the target directory."""
     target = Path(path)
@@ -290,18 +286,19 @@ def write_default_config(path: str | Path = "config.yaml", *, overwrite: bool = 
     raise PermissionError(f"Unable to write default config to {target} or {Path.home() / target.name}")
 
 
-def load_config(path: str | None = "config.yaml") -> MimConfig:
-    """Load application config from the canonical project YAML, creating a default one if missing."""
-    candidates = _candidate_paths(path)
-    for candidate in candidates:
-        if candidate.exists():
-            with candidate.open("r", encoding="utf-8") as fh:
-                return MimConfig.from_dict(yaml.safe_load(fh) or {})
-
-    default_target = candidates[0]
-    target = write_default_config(default_target, overwrite=False)
+def load_config(path: str | Path | None = "config.yaml") -> MimConfig:
+    """Load an existing application config without creating or discovering files."""
+    target = Path(path or "config.yaml")
+    if not target.is_file():
+        raise FileNotFoundError(
+            f"Config file not found: {target}. Create one with `mim-init {target}` "
+            "or `write_default_config()`."
+        )
     with target.open("r", encoding="utf-8") as fh:
-        return MimConfig.from_dict(yaml.safe_load(fh) or {})
+        payload = yaml.safe_load(fh) or {}
+    if not isinstance(payload, dict):
+        raise ValueError("Config root must be a YAML mapping.")
+    return MimConfig.from_dict(payload)
 
 
 __all__ = ["MimConfig", "load_config", "write_default_config"]

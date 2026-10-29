@@ -94,6 +94,8 @@ print(normalized)  # salam wa7ed 3la ekher
 mim.shutdown()
 ```
 
+`load_config()` only reads the exact file path requested and never creates config files or searches legacy filenames. Run `mim-init` (or call `write_default_config()`) explicitly before loading a generated config.
+
 To use chat, set the API key named by `chatbot.llm_api_key_env` in your environment and configure `chatbot.llm_endpoint` and `chatbot.llm_model` in `config.yaml`. The default chatbot endpoint is MNTRA's OpenAI-compatible API and expects `MNTRA_API_KEY`; compatible endpoints that do not require authentication can leave the key unset.
 
 The generated config starts with tools and intent classification disabled, so chat is a regular text-completion flow by default. Set `chatbot.system_prompt` to your full custom prompt; `system_prompt_extra` and `system_prompt_file` let you add reusable instructions:
@@ -190,6 +192,18 @@ audit:
 ```
 
 When enabled, chat turns are logged with a hash chain and retention is applied automatically. SQLite supports access and erasure helpers; erasing records breaks the chain, so retain and review verification evidence according to your organization's legal and compliance requirements. MIM is a technical component, not a compliance certification or legal guarantee.
+
+Verify a configured audit chain with the same backend settings:
+
+```python
+from mim_ai import load_config
+from mim_ai.audit import verify_chain
+
+audit_config = load_config("config.yaml").audit
+ok, message = verify_chain(config=audit_config)
+```
+
+SQLite, JSONL, PostgreSQL, MySQL, and MongoDB have built-in ordered readers. A custom audit adapter must implement `iter_chain_records()` to enable verification; multi-writer custom adapters must also implement the existing atomic `append_chained()` contract.
 
 ---
 

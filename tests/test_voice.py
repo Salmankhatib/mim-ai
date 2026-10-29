@@ -24,6 +24,48 @@ def test_voice_config_exposes_usable_energy_vad_defaults():
     assert cfg.voice.vad.threshold == 0.015
     assert cfg.voice.vad.min_silence_ms == 700
     assert cfg.voice.vad.start_timeout_ms == 10000
+    assert cfg.voice.fallback_response
+
+
+def test_voice_pipeline_uses_configured_empty_reply_fallback(monkeypatch):
+    import importlib
+    from types import SimpleNamespace
+
+    from mim_ai.config import STTConfig, TTSConfig, VoiceSection
+
+    pipeline_module = importlib.import_module("mim_ai.voice.pipeline")
+    monkeypatch.setattr(
+        pipeline_module,
+        "record_until_silence",
+        lambda *args, **kwargs: np.ones(10, dtype=np.float32),
+    )
+
+    class FakeSTT:
+        def __init__(self, config):
+            self.config = config
+
+        def transcribe(self, audio, sample_rate):
+            return "salam"
+
+    class FakeTTS:
+        def __init__(self, config):
+            self.config = config
+
+        def synthesize(self, text):
+            pytest.fail("TTS should be disabled in this test")
+
+    monkeypatch.setattr(pipeline_module, "STT", FakeSTT)
+    monkeypatch.setattr(pipeline_module, "TTS", FakeTTS)
+    chatbot = SimpleNamespace(chat=lambda *args, **kwargs: ChatReply(text=""))
+    voice = VoiceSection.from_mapping({"fallback_response": "Please try again."})
+    result = VoicePipeline(
+        voice,
+        STTConfig(),
+        TTSConfig(enabled=False),
+        chatbot=chatbot,
+    ).listen_and_reply(play_audio=False)
+
+    assert result.reply_text == "Please try again."
 
 
 def test_voice_config_validates_vad_and_supports_legacy_silence_timeout():
@@ -43,6 +85,8 @@ def test_voice_config_validates_vad_and_supports_legacy_silence_timeout():
 
     with pytest.raises(ValueError, match="sample_rate"):
         VoiceSection.from_mapping({"audio": {"sample_rate": 0}})
+    with pytest.raises(ValueError, match="fallback_response"):
+        VoiceSection.from_mapping({"fallback_response": 1})
 
 
 def test_chat_reply_exposes_intent_metadata():

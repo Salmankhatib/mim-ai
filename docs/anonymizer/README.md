@@ -12,6 +12,7 @@ python -m spacy download en_core_web_lg
 ```
 
 There is no automatic regex-only fallback when the model is missing. Moroccan CIN and phone recognizers are included, but the configured Presidio analyzer still needs its model to initialize.
+The packaged analyzer currently supports only `language: en`; configuring any other language fails explicitly because French and Darija NLP models are not configured. Moroccan CIN and phone regex recognizers remain available, but are not a substitute for language-appropriate named-entity recognition.
 
 ## Quick start
 
@@ -49,6 +50,19 @@ anonymizer:
       params:
         new_value: "[ORDER]"
 ```
+
+The `encrypt` operator requires an AES key of 16, 24, or 32 bytes. Keep it outside YAML and reference an environment variable:
+
+```yaml
+anonymizer:
+  default_operators:
+    DEFAULT:
+      name: encrypt
+      params:
+        key_env: MIM_ANONYMIZER_ENCRYPTION_KEY
+```
+
+Set `MIM_ANONYMIZER_ENCRYPTION_KEY` in the process environment to a 16-, 24-, or 32-byte value before calling `anonymize()`. Missing or invalid keys fail immediately with a configuration error.
 
 ## Runtime config
 

@@ -12,7 +12,8 @@ import yaml
 @dataclass
 class AnonymizerConfig:
     enabled: bool = True
-    default_operators: dict[str, str] = field(
+    language: str = "en"
+    default_operators: dict[str, Any] = field(
         default_factory=lambda: {
             "DEFAULT": "replace",
             "CIN_MA": "replace",
@@ -21,6 +22,13 @@ class AnonymizerConfig:
     )
     custom_patterns: list[dict[str, Any]] = field(default_factory=list)
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.language, str) or self.language.lower() != "en":
+            raise ValueError(
+                "The packaged anonymizer currently supports only language='en'; "
+                "French and Darija NLP models are not configured."
+            )
+
     @classmethod
     def from_mapping(cls, data: Mapping[str, Any] | dict[str, Any] | None) -> "AnonymizerConfig":
         cfg = cls()
@@ -28,12 +36,13 @@ class AnonymizerConfig:
 
         if "enabled" in raw:
             cfg.enabled = bool(raw["enabled"])
+        if "language" in raw:
+            cfg.language = raw["language"]
+        cfg.__post_init__()
 
         default_operators = raw.get("default_operators")
         if isinstance(default_operators, dict):
-            cfg.default_operators = {
-                str(k): str(v) for k, v in default_operators.items()
-            }
+            cfg.default_operators = {str(k): v for k, v in default_operators.items()}
 
         custom_patterns = raw.get("custom_patterns")
         if isinstance(custom_patterns, list):

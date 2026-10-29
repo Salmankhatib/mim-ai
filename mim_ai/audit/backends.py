@@ -56,6 +56,12 @@ class LogStorageAdapter:
     def purge_older_than(self, days: int) -> int:
         raise NotImplementedError
 
+    def iter_chain_records(self):
+        raise NotImplementedError(
+            "The configured adapter must implement iter_chain_records() "
+            "to support audit-chain verification"
+        )
+
     def close(self) -> None:
         return None
 
@@ -153,6 +159,12 @@ class SQLiteBackend(LogStorageAdapter):
             )
             return cur.rowcount
 
+    def iter_chain_records(self) -> list[dict[str, Any]]:
+        with self._lock:
+            cur = self.conn.execute(f"SELECT * FROM {self.table} ORDER BY seq")
+            columns = [column[0] for column in cur.description]
+            return [dict(zip(columns, row)) for row in cur.fetchall()]
+
     def close(self) -> None:
         with self._lock:
             self.conn.close()
@@ -202,6 +214,27 @@ class JSONLBackend(LogStorageAdapter):
                 return last_hash
         return None
 
+    def iter_chain_records(self) -> list[dict[str, Any]]:
+        records = []
+        paths = sorted(
+            path for path in self.dir.iterdir()
+            if path.is_file()
+            and path.name.startswith(f"{self.prefix}-")
+            and path.suffix == ".jsonl"
+        )
+        for path in paths:
+            with path.open("r", encoding="utf-8") as fh:
+                for line_number, line in enumerate(fh, start=1):
+                    if not line.strip():
+                        continue
+                    record = json.loads(line)
+                    if not isinstance(record, dict):
+                        raise ValueError(
+                            f"Expected an object in {path} line {line_number}"
+                        )
+                    records.append(record)
+        return records
+
     def purge_older_than(self, days: int) -> int:
         cutoff = time.time() - days * 86400
         removed = 0
@@ -227,7 +260,7 @@ class PostgreSQLBackend(LogStorageAdapter):
         self.table = _validate_sql_identifier(table)
         self._conn = None
 
-    def _connect(self):
+    def _connect(self, *, initialize: bool = True):
         if self._conn is not None:
             return self._conn
         try:
@@ -241,16 +274,17 @@ class PostgreSQLBackend(LogStorageAdapter):
         if not self.database_url:
             raise ValueError("database_url is required for PostgreSQL backend")
         self._conn = psycopg.connect(self.database_url)
-        with self._conn.cursor() as cur:
-            cur.execute(
-                f"""
-                CREATE TABLE IF NOT EXISTS {self.table} (
-                    id SERIAL PRIMARY KEY,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    payload JSONB NOT NULL
+        if initialize:
+            with self._conn.cursor() as cur:
+                cur.execute(
+                    f"""
+                    CREATE TABLE IF NOT EXISTS {self.table} (
+                        id SERIAL PRIMARY KEY,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        payload JSONB NOT NULL
+                    )
+                    """
                 )
-                """
-            )
         return self._conn
 
     def append(self, row: dict[str, Any]) -> None:
@@ -284,6 +318,12 @@ class PostgreSQLBackend(LogStorageAdapter):
             row = cur.fetchone()
         return row[0] if row else None
 
+    def iter_chain_records(self) -> list[dict[str, Any]]:
+        conn = self._connect(initialize=False)
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT payload FROM {self.table} ORDER BY id")
+            return [_decode_chain_payload(row[0]) for row in cur.fetchall()]
+
     def close(self) -> None:
         if self._conn is not None:
             self._conn.close()
@@ -298,7 +338,7 @@ class MySQLBackend(LogStorageAdapter):
         self.table = _validate_sql_identifier(table)
         self._conn = None
 
-    def _connect(self):
+    def _connect(self, *, initialize: bool = True):
         if self._conn is not None:
             return self._conn
         try:
@@ -324,17 +364,18 @@ class MySQLBackend(LogStorageAdapter):
             password=parsed.password or "",
             database=parsed.path.lstrip("/") or None,
         )
-        with self._conn.cursor() as cur:
-            cur.execute(
-                f"""
-                CREATE TABLE IF NOT EXISTS {self.table} (
-                    id BIGINT NOT NULL AUTO_INCREMENT,
-                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    payload JSON,
-                    PRIMARY KEY (id)
+        if initialize:
+            with self._conn.cursor() as cur:
+                cur.execute(
+                    f"""
+                    CREATE TABLE IF NOT EXISTS {self.table} (
+                        id BIGINT NOT NULL AUTO_INCREMENT,
+                        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        payload JSON,
+                        PRIMARY KEY (id)
+                    )
+                    """
                 )
-                """
-            )
         return self._conn
 
     def append(self, row: dict[str, Any]) -> None:
@@ -367,6 +408,12 @@ class MySQLBackend(LogStorageAdapter):
             )
             row = cur.fetchone()
         return row[0] if row and row[0] else None
+
+    def iter_chain_records(self) -> list[dict[str, Any]]:
+        conn = self._connect(initialize=False)
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT payload FROM {self.table} ORDER BY id")
+            return [_decode_chain_payload(row[0]) for row in cur.fetchall()]
 
     def close(self) -> None:
         if self._conn is not None:
@@ -420,6 +467,13 @@ class MongoDBBackend(LogStorageAdapter):
             projection={"line_hash": 1},
         )
         return latest.get("line_hash") if latest else None
+
+    def iter_chain_records(self) -> list[dict[str, Any]]:
+        collection = self._connect()
+        return [
+            {key: value for key, value in document.items() if key != "_id"}
+            for document in collection.find({}, sort=[("_id", 1)])
+        ]
 
     def close(self) -> None:
         if self._client is not None:
@@ -487,6 +541,31 @@ class GenericDatabaseBackend(LogStorageAdapter):
             )
         return append_chained(row, hash_row)
 
+    def iter_chain_records(self) -> list[dict[str, Any]]:
+        if self._adapter is not None:
+            iterator = getattr(self._adapter, "iter_chain_records", None)
+            if not callable(iterator):
+                raise NotImplementedError(
+                    "The configured database adapter must implement "
+                    "iter_chain_records() to support audit-chain verification"
+                )
+            return list(iterator())
+
+        if not self._fallback_path.exists():
+            return []
+        records = []
+        with self._fallback_path.open("r", encoding="utf-8") as fh:
+            for line_number, line in enumerate(fh, start=1):
+                if not line.strip():
+                    continue
+                record = json.loads(line)
+                if not isinstance(record, dict):
+                    raise ValueError(
+                        f"Expected an object in {self._fallback_path} line {line_number}"
+                    )
+                records.append(record)
+        return records
+
     def purge_older_than(self, days: int) -> int:
         if self._adapter is not None:
             return self._adapter.purge_older_than(days)
@@ -546,6 +625,16 @@ def create_backend(
         )
 
     raise ValueError(f"Unsupported audit backend: {backend_name!r}")
+
+
+def _decode_chain_payload(payload: Any) -> dict[str, Any]:
+    if isinstance(payload, bytes):
+        payload = payload.decode("utf-8")
+    if isinstance(payload, str):
+        payload = json.loads(payload)
+    if not isinstance(payload, dict):
+        raise ValueError("Audit chain payload must be a JSON object")
+    return payload
 
 
 __all__ = [

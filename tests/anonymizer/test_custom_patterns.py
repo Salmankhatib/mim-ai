@@ -55,6 +55,35 @@ def test_unknown_operator_does_not_fall_back_to_replace():
         ))
 
 
+def test_encrypt_operator_requires_a_valid_key():
+    with pytest.raises(ValueError, match="requires params.key or params.key_env"):
+        build_operators(AnonymizerConfig(default_operators={"DEFAULT": "encrypt"}))
+
+    with pytest.raises(ValueError, match="16, 24, or 32 bytes"):
+        build_operators(AnonymizerConfig(
+            default_operators={
+                "DEFAULT": {
+                    "name": "encrypt",
+                    "params": {"key": "too-short"},
+                }
+            }
+        ))
+
+
+def test_encrypt_operator_resolves_environment_key(monkeypatch):
+    monkeypatch.setenv("MIM_TEST_ANONYMIZER_KEY", "0123456789abcdef")
+    operators = build_operators(AnonymizerConfig(
+        default_operators={
+            "DEFAULT": {
+                "name": "encrypt",
+                "params": {"key_env": "MIM_TEST_ANONYMIZER_KEY"},
+            }
+        }
+    ))
+
+    assert operators["DEFAULT"].params["key"] == b"0123456789abcdef"
+
+
 def test_custom_pattern_without_regex_fails_explicitly():
     with pytest.raises(ValueError, match="missing 'pattern'"):
         build_custom_recognizers([{"name": "MISSING"}])

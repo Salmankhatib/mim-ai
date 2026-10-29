@@ -190,7 +190,10 @@ def test_init_cli_creates_config_and_reports_path(tmp_path, monkeypatch, capsys)
 def test_generated_default_config_runs_normalizer_outside_repository(
     tmp_path, monkeypatch
 ):
+    from mim_ai.config import write_default_config
+
     monkeypatch.chdir(tmp_path)
+    write_default_config()
     app = Mim.from_config()
 
     normalized = app.normalizer.normalize("salam wa7ed 3la ekher")

@@ -19,6 +19,7 @@ normalizer:
 
 anonymizer:
   enabled: true
+  language: en
   default_operators:
     DEFAULT: replace
     CIN_MA: replace
@@ -60,6 +61,7 @@ voice:
   use_intents: true
   use_audit_log: true
   use_chatbot: true
+  fallback_response: "سمح ليا، ما فهمتش."
   max_record_seconds: 30
   vad:
     enabled: true

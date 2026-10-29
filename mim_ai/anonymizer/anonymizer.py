@@ -28,15 +28,27 @@ def _resolve_config(config: Mapping[str, Any] | dict[str, Any] | AnonymizerConfi
         return load_config(dict(config))
     from mim_ai.config import load_config as load_main_config
 
-    return load_main_config().anonymizer
+    try:
+        return load_main_config().anonymizer
+    except FileNotFoundError:
+        return AnonymizerConfig()
 
 
 def _config_cache_key(config: AnonymizerConfig) -> str:
+    patterns = []
+    for item in getattr(config, "custom_patterns", []) or []:
+        if not isinstance(item, dict):
+            patterns.append(item)
+            continue
+        patterns.append({
+            key: item[key]
+            for key in ("name", "entity", "pattern", "regex", "score")
+            if key in item
+        })
     payload = {
         "enabled": bool(getattr(config, "enabled", True)),
-        "language": str(getattr(config, "language", "en")),
-        "default_operators": getattr(config, "default_operators", {}),
-        "custom_patterns": getattr(config, "custom_patterns", []),
+        "language": config.language,
+        "custom_patterns": patterns,
     }
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
@@ -48,7 +60,7 @@ def _build_analyzer_cached(cache_key: str):
     payload = json.loads(cache_key)
     config = AnonymizerConfig(
         enabled=bool(payload.get("enabled", True)),
-        default_operators=dict(payload.get("default_operators", {})),
+        language=payload.get("language", "en"),
         custom_patterns=list(payload.get("custom_patterns", [])),
     )
 
@@ -62,8 +74,8 @@ def _build_analyzer_cached(cache_key: str):
     return analyzer
 
 
-@lru_cache(maxsize=8)
-def _build_anonymizer_cached(language: str):
+@lru_cache(maxsize=1)
+def _build_anonymizer_cached():
     try:
         from presidio_anonymizer import AnonymizerEngine
     except ImportError as exc:  # pragma: no cover - optional dependency
@@ -97,11 +109,11 @@ def anonymize(
     if not cfg.enabled:
         return AnonymizationResult(text=str(text), entities_found=[], operators_applied=[])
 
-    analyzer = _build_analyzer(cfg)
-    results = analyzer.analyze(text=str(text), language="en")
     operators = build_operators(cfg)
+    analyzer = _build_analyzer(cfg)
+    results = analyzer.analyze(text=str(text), language=cfg.language)
 
-    anonymizer_engine = _build_anonymizer_cached(str(getattr(cfg, "language", "en")))
+    anonymizer_engine = _build_anonymizer_cached()
     anonymized = anonymizer_engine.anonymize(
         text=str(text),
         analyzer_results=results,
