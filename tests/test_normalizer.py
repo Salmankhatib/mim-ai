@@ -354,6 +354,7 @@ def test_optional_subsystems_stay_lazy_loaded():
     assert hasattr(mim_ai, "Mim")
 
 
+@pytest.mark.requires_spacy
 def test_readme_local_dev_flow_works_without_external_llm(tmp_path):
     from mim_ai import Mim, anonymizer, write_default_config
 

@@ -1,6 +1,9 @@
+import pytest
+
 from mim_ai.anonymizer import anonymize
 
 
+@pytest.mark.requires_spacy
 def test_moroccan_phone_detection():
     text = "Call 0612345678 or +212612345678 for support."
     result = anonymize(text)

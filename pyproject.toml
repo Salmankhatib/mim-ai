@@ -119,3 +119,6 @@ mim_ai = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+markers = [
+    "requires_spacy: requires the separately downloaded English spaCy model",
+]

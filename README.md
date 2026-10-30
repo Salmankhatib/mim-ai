@@ -98,6 +98,10 @@ mim.shutdown()
 
 To use chat, set the API key named by `chatbot.llm_api_key_env` in your environment and configure `chatbot.llm_endpoint` and `chatbot.llm_model` in `mim_config.yaml`. The default chatbot endpoint is MNTRA's OpenAI-compatible API and expects `MNTRA_API_KEY`; compatible endpoints that do not require authentication can leave the key unset.
 
+### CI and test reports
+
+GitHub Actions runs Ruff and the test suites separately for each module. It also uploads a PDF test-results summary with each run. Optional SMTP delivery can be enabled using GitHub Actions secrets; see [CI setup](.github/CI.md) for the secret names and configuration.
+
 The generated config starts with tools and intent classification disabled, so chat is a regular text-completion flow by default. Set `chatbot.system_prompt` to your full custom prompt; `system_prompt_extra` and `system_prompt_file` let you add reusable instructions:
 
 ```yaml

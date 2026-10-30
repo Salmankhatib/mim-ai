@@ -1,0 +1,179 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Ruff
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Ruff
+        run: python -m pip install ruff
+
+      - name: Lint Python sources
+        run: python -m ruff check --select F mim_ai tests examples scripts
+
+  tests:
+    name: Test ${{ matrix.suite.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          - name: normalizer
+            path: tests/test_normalizer.py
+          - name: chatbot-intents
+            path: tests/test_intents.py
+          - name: voice
+            path: tests/test_voice.py
+          - name: audit
+            path: tests/test_audit.py
+          - name: anonymizer
+            path: tests/anonymizer
+          - name: sdk-examples
+            path: tests/test_mim.py tests/test_example_auth.py
+          - name: ci-report
+            path: tests/test_ci_report.py
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,voice,anonymizer]"
+
+      - name: Run ${{ matrix.suite.name }} tests
+        run: |
+          mkdir -p test-results
+          python -m pytest -q -m "not requires_spacy" ${{ matrix.suite.path }} \
+            --junitxml="test-results/${{ matrix.suite.name }}.xml"
+
+      - name: Upload ${{ matrix.suite.name }} test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-${{ matrix.suite.name }}
+          path: test-results/${{ matrix.suite.name }}.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+  compatibility:
+    name: Full suite (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install package and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,voice,anonymizer]"
+
+      - name: Run full test suite
+        run: |
+          mkdir -p test-results
+          python -m pytest -q -m "not requires_spacy" \
+            --junitxml="test-results/full-py${{ matrix.python-version }}.xml"
+
+      - name: Upload full-suite test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-full-py${{ matrix.python-version }}
+          path: test-results/full-py${{ matrix.python-version }}.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+  report:
+    name: Build test report
+    if: always() && !cancelled()
+    needs: [lint, tests, compatibility]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download module test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: junit-*
+          path: ci-results
+          merge-multiple: true
+
+      - name: Install PDF report dependency
+        run: python -m pip install reportlab
+
+      - name: Generate PDF test report
+        run: |
+          python scripts/ci_test_report.py \
+            --results-dir ci-results \
+            --output test-results.pdf \
+            --expected-suites normalizer chatbot-intents voice audit anonymizer sdk-examples ci-report full-py3.9 full-py3.10 full-py3.11 \
+            --commit "${GITHUB_SHA}"
+
+      - name: Upload PDF test report
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-pdf
+          path: test-results.pdf
+          retention-days: 30
+
+      - name: Email PDF test report
+        if: (github.event_name == 'workflow_dispatch' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) && env.CI_SMTP_HOST != '' && env.CI_EMAIL_TO != '' && env.CI_SMTP_FROM != ''
+        env:
+          CI_SMTP_HOST: ${{ secrets.CI_SMTP_HOST }}
+          CI_SMTP_PORT: ${{ secrets.CI_SMTP_PORT }}
+          CI_SMTP_USERNAME: ${{ secrets.CI_SMTP_USERNAME }}
+          CI_SMTP_PASSWORD: ${{ secrets.CI_SMTP_PASSWORD }}
+          CI_SMTP_FROM: ${{ secrets.CI_SMTP_FROM }}
+          CI_EMAIL_TO: ${{ secrets.CI_EMAIL_TO }}
+        run: |
+          python scripts/ci_test_report.py \
+            --results-dir ci-results \
+            --output test-results.pdf \
+            --commit "${GITHUB_SHA}" \
+            --expected-suites normalizer chatbot-intents voice audit anonymizer sdk-examples ci-report full-py3.9 full-py3.10 full-py3.11 \
+            --email

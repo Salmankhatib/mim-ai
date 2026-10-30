@@ -8,6 +8,7 @@ from mim_ai.anonymizer.operators import build_operators
 from mim_ai.anonymizer.recognizers.custom import build_custom_recognizers
 
 
+@pytest.mark.requires_spacy
 def test_custom_patterns_are_supported():
     text = "Please check ORDER-123456 in the system."
     result = anonymize(
@@ -27,6 +28,7 @@ def test_custom_patterns_are_supported():
     assert "[ORDER]" in result.text
 
 
+@pytest.mark.requires_spacy
 def test_custom_patterns_accept_dynamic_mapping_payloads():
     payload = MappingProxyType(
         {
