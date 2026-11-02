@@ -89,7 +89,10 @@ def verify_chain(
         expected = hashlib.sha256(payload.encode("utf-8")).hexdigest()
         if expected != line_hash:
             return False, f"record={location} line_hash mismatch (row edited?)"
-        if previous_hash is not None and record.get("prev_hash") != previous_hash:
+        record_previous_hash = record.get("prev_hash")
+        if record_previous_hash is None:
+            previous_hash = None
+        elif previous_hash is not None and record_previous_hash != previous_hash:
             return False, f"record={location} prev_hash mismatch (row deleted?)"
         previous_hash = line_hash
 

@@ -45,10 +45,13 @@ class AuditLogger:
                 "use SQLite or provide a compatible adapter"
             )
 
-        self._last_hash = self._restore_last_hash()
-
+        purged_rows = 0
         if config.purge_on_start:
-            self._backend.purge_older_than(config.retention_days)
+            purged_rows = self._backend.purge_older_than(config.retention_days)
+
+        self._last_hash = self._restore_last_hash()
+        if purged_rows and config.hash_chain:
+            self._write_chain_checkpoint(purged_rows)
 
     def _restore_last_hash(self) -> str | None:
         backend = getattr(self, "_backend", None)
@@ -197,7 +200,34 @@ class AuditLogger:
         """Run retention purge on demand. Also runs at startup."""
         if not self.enabled:
             return 0
-        return self._backend.purge_older_than(self.config.retention_days)
+        purged_rows = self._backend.purge_older_than(self.config.retention_days)
+        if purged_rows and self.config.hash_chain:
+            self._write_chain_checkpoint(purged_rows)
+        return purged_rows
+
+    def _write_chain_checkpoint(self, purged_rows: int) -> None:
+        ts = datetime.now(timezone.utc).isoformat()
+        row = {
+            "ts": ts,
+            "trace_id": "system",
+            "event": "chain_checkpoint",
+            "user_ref": None,
+            "app_version": self.config.app_version,
+            "config_hash": None,
+            "input_hash": None,
+            "output_hash": None,
+            "duration_ms": None,
+            "status": "ok",
+            "payload": json.dumps({"purged_rows": purged_rows}, ensure_ascii=False),
+            "prev_hash": None,
+        }
+        append_checkpoint = getattr(self._backend, "append_checkpoint", None)
+        if callable(append_checkpoint):
+            self._last_hash = append_checkpoint(row, _line_hash)
+        else:
+            row["line_hash"] = _line_hash(row)
+            self._backend.append(row)
+            self._last_hash = row["line_hash"]
 
     def close(self) -> None:
         backend = getattr(self, "_backend", None)

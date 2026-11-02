@@ -521,6 +521,46 @@ def test_audit_hash_chain_persists_across_restarts(tmp_path):
     assert rows[2]["prev_hash"] == rows[1]["line_hash"]
 
 
+@pytest.mark.parametrize("purge_on_start", [True, False])
+def test_retention_purge_creates_verifiable_hash_chain_checkpoint(
+    tmp_path, purge_on_start
+):
+    db_path = tmp_path / f"purge-{purge_on_start}.db"
+    config = AuditConfig(
+        enabled=True,
+        backend="sqlite",
+        db_path=str(db_path),
+        retention_days=90,
+        purge_on_start=False,
+        hash_chain=True,
+    )
+    initial = AuditLogger(config)
+    initial.emit(event="expired", trace_id="trace-expired")
+    initial.emit(event="retained", trace_id="trace-retained")
+    initial._backend.conn.execute(
+        "UPDATE audit_events SET ts = ? WHERE event = ?",
+        ("2000-01-01T00:00:00+00:00", "expired"),
+    )
+    initial.close()
+
+    config.purge_on_start = purge_on_start
+    logger = AuditLogger(config)
+    if not purge_on_start:
+        assert logger.purge_expired() == 1
+
+    records = logger._backend.iter_chain_records()
+    checkpoint = records[-1]
+    assert checkpoint["event"] == "chain_checkpoint"
+    assert checkpoint["prev_hash"] is None
+    assert logger._last_hash == checkpoint["line_hash"]
+    assert verify_chain(str(db_path)) == (True, "chain intact")
+
+    logger.emit(event="after_purge", trace_id="trace-after-purge")
+    assert logger._backend.iter_chain_records()[-1]["prev_hash"] == checkpoint["line_hash"]
+    assert verify_chain(str(db_path)) == (True, "chain intact")
+    logger.close()
+
+
 def test_jsonl_hash_chain_persists_across_restarts(tmp_path):
     config = AuditConfig(
         enabled=True,

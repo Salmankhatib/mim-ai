@@ -40,11 +40,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/salmankhatib06/mim-ai"
-Repository = "https://github.com/salmankhatib06/mim-ai"
-Documentation = "https://github.com/salmankhatib06/mim-ai/tree/main/docs/EN"
-"Bug Tracker" = "https://github.com/salmankhatib06/mim-ai/issues"
-Changelog = "https://github.com/salmankhatib06/mim-ai/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/Salmankhatib/mim-ai"
+Repository = "https://github.com/Salmankhatib/mim-ai"
+Documentation = "https://github.com/Salmankhatib/mim-ai/tree/main/docs/EN"
+"Bug Tracker" = "https://github.com/Salmankhatib/mim-ai/issues"
+Changelog = "https://github.com/Salmankhatib/mim-ai/blob/main/CHANGELOG.md"
 
 [project.scripts]
 mim-init = "mim_ai.__main__:init_main"

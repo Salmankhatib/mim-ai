@@ -4,7 +4,7 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/mim-ai.svg)](https://pypi.org/project/mim-ai/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/Salmankhatib/mim-ai/actions/workflows/tests.yml/badge.svg)](https://github.com/Salmankhatib/mim-ai/actions/workflows/tests.yml)
-[![Made in Morocco](https://img.shields.io/badge/Made%20in-Morocco%20🇲🇦-cc0000)](https://github.com/salmankhatib06/mim-ai)
+[![Made in Morocco](https://img.shields.io/badge/Made%20in-Morocco%20🇲🇦-cc0000)](https://github.com/Salmankhatib/mim-ai)
 
 > **A config-first Python SDK for Moroccan Darija AI.**  
 > Built by a Moroccan developer, for Moroccan developers.  
@@ -195,7 +195,7 @@ audit:
   retention_days: 90      # auto-purge on schedule
 ```
 
-When enabled, chat turns are logged with a hash chain and retention is applied automatically. SQLite supports access and erasure helpers; erasing records breaks the chain, so retain and review verification evidence according to your organization's legal and compliance requirements. MIM is a technical component, not a compliance certification or legal guarantee.
+When enabled, chat turns are logged with a hash chain and retention is applied automatically. A retention purge appends a hash-chained checkpoint that starts a verifiable new chain segment. SQLite supports access and erasure helpers; erasing records outside the retention purge workflow breaks the chain, so retain and review verification evidence according to your organization's legal and compliance requirements. MIM is a technical component, not a compliance certification or legal guarantee.
 
 Verify a configured audit chain with the same backend settings:
 

@@ -135,6 +135,22 @@ class SQLiteBackend(LogStorageAdapter):
                 raise
         return row["line_hash"]
 
+    def append_checkpoint(
+        self, row: dict[str, Any], hash_row: Callable[[dict[str, Any]], str]
+    ) -> str:
+        """Atomically append a hash-chain segment boundary."""
+        with self._lock:
+            self.conn.execute("BEGIN IMMEDIATE")
+            try:
+                row["prev_hash"] = None
+                row["line_hash"] = hash_row(row)
+                self._insert(row)
+                self.conn.execute("COMMIT")
+            except Exception:
+                self.conn.execute("ROLLBACK")
+                raise
+        return row["line_hash"]
+
     def purge_older_than(self, days: int) -> int:
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
         with self._lock:
