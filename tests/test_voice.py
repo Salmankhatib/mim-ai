@@ -308,6 +308,200 @@ def test_pipeline_surfaces_chat_errors_and_does_not_speak_success_fallback(monke
     assert audit.events[0]["extra"]["error"] == "upstream unavailable"
 
 
+@pytest.mark.parametrize("stage", ["record", "stt", "tts", "play"])
+def test_pipeline_returns_error_reply_for_voice_component_errors(monkeypatch, stage):
+    import importlib
+    from types import SimpleNamespace
+
+    from mim_ai.config import STTConfig, TTSConfig, VoiceSection
+    from mim_ai.voice.pipeline import VoicePipeline
+
+    pipeline_module = importlib.import_module("mim_ai.voice.pipeline")
+
+    def record(*args, **kwargs):
+        if stage == "record":
+            raise pipeline_module.AudioError("audio device unavailable")
+        return np.ones(10, dtype=np.float32)
+
+    monkeypatch.setattr(pipeline_module, "record_until_silence", record)
+
+    class FakeSTT:
+        def __init__(self, config):
+            self.config = config
+
+        def transcribe(self, audio, sample_rate):
+            if stage == "stt":
+                raise pipeline_module.STTError("transcription unavailable")
+            return "salam"
+
+    class FakeTTS:
+        def __init__(self, config):
+            self.config = config
+
+        def synthesize(self, text):
+            if stage == "tts":
+                raise pipeline_module.TTSError("speech generation unavailable")
+            return np.ones(10, dtype=np.float32), 16000
+
+    class FakeAudit:
+        def __init__(self):
+            self.events = []
+
+        def emit(self, **event):
+            self.events.append(event)
+
+    def play(*args, **kwargs):
+        raise pipeline_module.AudioError("speaker unavailable")
+
+    monkeypatch.setattr(pipeline_module, "STT", FakeSTT)
+    monkeypatch.setattr(pipeline_module, "TTS", FakeTTS)
+    if stage == "play":
+        monkeypatch.setattr(pipeline_module, "play", play)
+
+    audit = FakeAudit()
+    chatbot = SimpleNamespace(
+        chat=lambda *args, **kwargs: ChatReply(text="Darija reply")
+    )
+    result = VoicePipeline(
+        VoiceSection(),
+        STTConfig(),
+        TTSConfig(),
+        chatbot=chatbot,
+        audit=audit,
+    ).listen_and_reply(play_audio=stage == "play")
+
+    expected_errors = {
+        "record": "audio device unavailable",
+        "stt": "transcription unavailable",
+        "tts": "speech generation unavailable",
+        "play": "speaker unavailable",
+    }
+    assert result.status == "error"
+    assert result.error == expected_errors[stage]
+    assert result.trace_id
+    assert result.duration_ms >= 0
+    assert len(audit.events) == 1
+    assert audit.events[0]["status"] == "error"
+    assert audit.events[0]["extra"]["error"] == expected_errors[stage]
+    if stage in {"tts", "play"}:
+        assert result.transcript == "salam"
+        assert result.reply_text == "Darija reply"
+
+
+@pytest.mark.parametrize(
+    ("strategy", "rule_match", "expected_llm_calls"),
+    [
+        ("rule", None, 0),
+        ("llm", None, 1),
+        ("hybrid", None, 1),
+        ("hybrid", "rule_intent", 0),
+    ],
+)
+def test_voice_pipeline_uses_configured_intent_strategy_and_prompt(
+    monkeypatch, strategy, rule_match, expected_llm_calls
+):
+    import importlib
+    from types import SimpleNamespace
+
+    from mim_ai.config import STTConfig, TTSConfig, VoiceSection
+    from mim_ai.voice.pipeline import VoicePipeline
+
+    pipeline_module = importlib.import_module("mim_ai.voice.pipeline")
+    monkeypatch.setattr(
+        pipeline_module,
+        "record_until_silence",
+        lambda *args, **kwargs: np.ones(10, dtype=np.float32),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "STT",
+        lambda config: SimpleNamespace(
+            config=config, transcribe=lambda audio, sample_rate: "salam"
+        ),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "TTS",
+        lambda config: SimpleNamespace(config=config),
+    )
+
+    provider = object()
+    llm_calls = []
+    rule_intent = SimpleNamespace(name=rule_match) if rule_match else None
+    llm_intent = SimpleNamespace(name="llm_intent")
+
+    class FakeIntents:
+        def match_rule_based(self, text, *, threshold):
+            return rule_intent, 0.8 if rule_intent else 0.0
+
+        def match_llm(self, text, actual_provider, prompt):
+            llm_calls.append((text, actual_provider, prompt))
+            return llm_intent, 0.9
+
+    chatbot = SimpleNamespace(
+        provider=provider,
+        chat=lambda *args, **kwargs: ChatReply(text="reply"),
+    )
+    prompt = "Use configured intent list: {intents}"
+    result = VoicePipeline(
+        VoiceSection(),
+        STTConfig(),
+        TTSConfig(enabled=False),
+        chatbot=chatbot,
+        intents=FakeIntents(),
+        intent_threshold=0.63,
+        intent_strategy=strategy,
+        intent_prompt=prompt,
+    ).listen_and_reply(play_audio=False)
+
+    assert len(llm_calls) == expected_llm_calls
+    if expected_llm_calls:
+        assert llm_calls == [("salam", provider, prompt)]
+    assert result.intent == (
+        rule_match if strategy == "hybrid" and rule_match else
+        "llm_intent" if strategy in {"llm", "hybrid"} else None
+    )
+
+
+def test_voice_llm_intent_strategy_requires_a_provider(monkeypatch):
+    import importlib
+
+    from mim_ai.config import STTConfig, TTSConfig, VoiceSection
+    from mim_ai.voice.pipeline import VoicePipeline
+
+    pipeline_module = importlib.import_module("mim_ai.voice.pipeline")
+    monkeypatch.setattr(
+        pipeline_module,
+        "record_until_silence",
+        lambda *args, **kwargs: np.ones(10, dtype=np.float32),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "STT",
+        lambda config: type(
+            "FakeSTT", (), {
+                "config": config,
+                "transcribe": lambda self, audio, sample_rate: "salam",
+            },
+        )(),
+    )
+
+    class FakeIntents:
+        def match_rule_based(self, text, *, threshold):
+            return None, 0.0
+
+    pipeline = VoicePipeline(
+        VoiceSection(),
+        STTConfig(),
+        TTSConfig(enabled=False),
+        intents=FakeIntents(),
+        intent_strategy="llm",
+    )
+
+    with pytest.raises(RuntimeError, match="requires a chatbot provider"):
+        pipeline.listen_and_reply(play_audio=False)
+
+
 def test_missing_dictionary_override_path_is_reported():
     with pytest.raises(FileNotFoundError, match="YAML file does not exist"):
         ArabiziDictionary.from_config(

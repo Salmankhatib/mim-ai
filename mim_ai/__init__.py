@@ -146,6 +146,8 @@ class Mim:
                 normalizer=self.normalizer if v.use_normalizer else None,
                 normalizer_log=self.normalizer_log if v.use_normalizer else None,
                 intent_threshold=self.config.intents.threshold,
+                intent_strategy=self.config.intents.strategy,
+                intent_prompt=self.config.intents.llm_prompt,
             )
         return self._voice
 

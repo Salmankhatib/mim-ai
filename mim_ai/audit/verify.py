@@ -1,16 +1,17 @@
 """
-Hash-chain verifier for supported audit storage backends.
+Hash-chain verifier for the audit log (ISO 42001 tamper-evidence).
 
-Reads stored records in append order, recomputes each row hash, and confirms
-that adjacent `prev_hash` links match.
+Walks the SQLite audit_events table in `seq` order, recomputes each
+line's hash, and confirms prev_hash matches the previous line's
+line_hash. Any mismatch means the log was edited out-of-band.
 """
 from __future__ import annotations
 
 import hashlib
 import json
-import re
 import sqlite3
 from contextlib import closing
+import re
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +47,7 @@ def verify_chain(
     ):
         raise ValueError(f"Invalid SQL table name: {selected_table!r}")
 
+    backend = None
     if config is None or backend_name == "sqlite":
         selected_path = db_path or getattr(config, "db_path", None)
         if not selected_path:

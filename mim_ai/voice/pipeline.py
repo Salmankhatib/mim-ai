@@ -20,9 +20,9 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from ..config import VoiceSection, STTConfig, TTSConfig
-from .stt import STT
-from .tts import TTS
-from .audio import record_until_silence, play
+from .stt import STT, STTError
+from .tts import TTS, TTSError
+from .audio import AudioError, record_until_silence, play
 
 
 @dataclass
@@ -48,6 +48,8 @@ class VoicePipeline:
         tts_cfg:    TTSConfig,
         chatbot=None, intents=None, audit=None, normalizer=None, normalizer_log=None,
         intent_threshold: float = 0.55,
+        intent_strategy: str = "rule",
+        intent_prompt: str | None = None,
     ) -> None:
         self.cfg = voice_cfg
         self.enabled = voice_cfg.enabled
@@ -59,6 +61,13 @@ class VoicePipeline:
         self.normalizer = normalizer
         self.normalizer_log = normalizer_log
         self.intent_threshold = intent_threshold
+        self.intent_strategy = intent_strategy
+        self.intent_prompt = intent_prompt or (
+            "Classify the user's message into one of the listed intents. "
+            "Return only JSON with the keys intent and confidence. "
+            "Use intent \"unknown\" when none fit.\n\n"
+            "Registered intents:\n{intents}"
+        )
 
     def listen_and_reply(
         self, *, session_id: str = "default",
@@ -73,10 +82,13 @@ class VoicePipeline:
         trace_id = f"voice_{uuid.uuid4().hex[:12]}"
 
         # 1. Record one utterance
-        audio_in = record_until_silence(
-            self.cfg.audio, self.cfg.vad,
-            max_seconds=self.cfg.max_record_seconds,
-        )
+        try:
+            audio_in = record_until_silence(
+                self.cfg.audio, self.cfg.vad,
+                max_seconds=self.cfg.max_record_seconds,
+            )
+        except AudioError as exc:
+            return self._error_reply(trace_id, t0, exc, session_id, user_ref)
         if audio_in is None or len(audio_in) == 0:
             return VoiceReply(
                 trace_id=trace_id,
@@ -85,7 +97,10 @@ class VoicePipeline:
             )
 
         # 2. Transcribe
-        transcript = self.stt.transcribe(audio_in, self.cfg.audio.sample_rate)
+        try:
+            transcript = self.stt.transcribe(audio_in, self.cfg.audio.sample_rate)
+        except STTError as exc:
+            return self._error_reply(trace_id, t0, exc, session_id, user_ref)
         if not transcript:
             return VoiceReply(
                 trace_id=trace_id,
@@ -112,6 +127,18 @@ class VoicePipeline:
         intent_name, intent_score = None, 0.0
         if self.intents and self.cfg.use_intents:
             m, s = self.intents.match_rule_based(transcript, threshold=self.intent_threshold)
+            if self.intent_strategy == "llm" or (
+                self.intent_strategy == "hybrid" and m is None
+            ):
+                provider = getattr(self.chatbot, "provider", None)
+                if provider is None:
+                    raise RuntimeError(
+                        "voice intents.strategy requires a chatbot provider "
+                        "for LLM-based classification"
+                    )
+                m, s = self.intents.match_llm(
+                    transcript, provider, self.intent_prompt
+                )
             if m:
                 intent_name, intent_score = m.name, s
 
@@ -132,9 +159,24 @@ class VoicePipeline:
         # 6. Speak
         audio_out, sr = (None, 0)
         if reply_text and self.tts.config.enabled:
-            audio_out, sr = self.tts.synthesize(reply_text)
+            try:
+                audio_out, sr = self.tts.synthesize(reply_text)
+            except TTSError as exc:
+                return self._error_reply(
+                    trace_id, t0, exc, session_id, user_ref,
+                    transcript=transcript, reply_text=reply_text,
+                    intent=intent_name, intent_score=intent_score, tools=tools,
+                )
         if play_audio and audio_out is not None:
-            play(audio_out, sr, device=self.cfg.audio.output_device)
+            try:
+                play(audio_out, sr, device=self.cfg.audio.output_device)
+            except AudioError as exc:
+                return self._error_reply(
+                    trace_id, t0, exc, session_id, user_ref,
+                    transcript=transcript, reply_text=reply_text,
+                    intent=intent_name, intent_score=intent_score,
+                    audio=audio_out, sample_rate=sr, tools=tools,
+                )
 
         # 7. Audit
         duration_ms = int((time.perf_counter() - t0) * 1000)
@@ -159,6 +201,55 @@ class VoicePipeline:
             trace_id=trace_id, duration_ms=duration_ms, tool_calls=tools,
             status=status,
             error=chat_error,
+        )
+
+    def _error_reply(
+        self,
+        trace_id: str,
+        started_at: float,
+        error: Exception,
+        session_id: str,
+        user_ref: str | None,
+        *,
+        transcript: str = "",
+        reply_text: str = "",
+        intent: str | None = None,
+        intent_score: float = 0.0,
+        audio: np.ndarray | None = None,
+        sample_rate: int = 0,
+        tools: list[dict] | None = None,
+    ) -> VoiceReply:
+        duration_ms = int((time.perf_counter() - started_at) * 1000)
+        error_message = str(error)
+        tool_calls = tools or []
+        if self.audit and self.cfg.use_audit_log:
+            self.audit.emit(
+                event="voice_turn",
+                trace_id=trace_id,
+                user_ref=user_ref,
+                input_text=transcript or None,
+                output_text=reply_text or None,
+                duration_ms=duration_ms,
+                status="error",
+                extra={
+                    "session_id": session_id,
+                    "intent": intent,
+                    "tool_calls": [tool["name"] for tool in tool_calls],
+                    "error": error_message,
+                },
+            )
+        return VoiceReply(
+            transcript=transcript,
+            reply_text=reply_text,
+            intent=intent,
+            intent_score=intent_score,
+            audio=audio,
+            sample_rate=sample_rate,
+            trace_id=trace_id,
+            duration_ms=duration_ms,
+            tool_calls=tool_calls,
+            status="error",
+            error=error_message,
         )
 
     async def alisten_and_reply(

@@ -25,6 +25,7 @@ import warnings
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from ..config import MimConfig
 from .config import ChatbotConfig
 from .history import build_history_store
 from .llm import LLMError, LLMProvider, ToolCall, build_provider
@@ -152,50 +153,82 @@ class Chatbot:
 
     # -----------------------------------------------------------------
     @classmethod
-    def from_config(cls, config: ChatbotConfig, **kwargs) -> "Chatbot":
+    def from_config(
+        cls,
+        config: ChatbotConfig,
+        *,
+        mim_config: MimConfig | None = None,
+        **kwargs,
+    ) -> "Chatbot":
         """
         Build a Chatbot, wiring up the normalizer, intents, and loggers
         automatically when the corresponding flags are on.
 
         Optional kwargs:
             normalizer, audit, normalizer_log, provider, registry, history, intents
-        Any explicit kwarg overrides auto-wiring.
+        Pass the parent ``MimConfig`` as ``mim_config`` to use its subsystem
+        configuration. Any explicit kwarg overrides auto-wiring.
         """
         if not config.enabled:
             return cls(config, **kwargs)
+
+        if mim_config is not None:
+            kwargs.setdefault("intent_strategy", mim_config.intents.strategy)
+            kwargs.setdefault("intent_prompt", mim_config.intents.llm_prompt)
 
         # Auto-wire the normalizer if requested and not supplied.
         if config.use_normalizer and "normalizer" not in kwargs:
             try:
                 from mim_ai.normalizer import Normalizer, NormalizerConfig
-                kwargs["normalizer"] = Normalizer.from_config(NormalizerConfig())
+                normalizer_config = (
+                    mim_config.normalizer if mim_config is not None else NormalizerConfig()
+                )
+                kwargs["normalizer"] = (
+                    Normalizer.from_config(normalizer_config)
+                    if normalizer_config.enabled else None
+                )
             except Exception as exc:            # noqa: BLE001
                 warnings.warn(f"Failed to initialize chatbot normalizer: {exc}", UserWarning)
 
         # Auto-wire intents if requested and not supplied.
         if config.use_intents and "intents" not in kwargs:
-            try:
-                from mim_ai.intents import IntentRegistry
-                registry = IntentRegistry()
-                intent_path = getattr(config, "intent_path", None)
-                if intent_path:
-                    registry.load_yaml(intent_path)
-                kwargs["intents"] = registry
-            except Exception as exc:            # noqa: BLE001
-                warnings.warn(f"Failed to initialize chatbot intents: {exc}", UserWarning)
+            intent_config = mim_config.intents if mim_config is not None else None
+            if intent_config is not None and not intent_config.enabled:
+                kwargs["intents"] = None
+            else:
+                try:
+                    from mim_ai.intents import IntentRegistry
+                    registry = IntentRegistry()
+                    intent_path = (
+                        intent_config.intents_path if intent_config is not None
+                        else getattr(config, "intent_path", None)
+                    )
+                    if intent_path:
+                        registry.load_yaml(intent_path)
+                    kwargs["intents"] = registry
+                except Exception as exc:            # noqa: BLE001
+                    warnings.warn(f"Failed to initialize chatbot intents: {exc}", UserWarning)
 
         # Auto-wire loggers if requested and not supplied.
         if config.use_audit_log and "audit" not in kwargs:
-            try:
-                from mim_ai.audit import AuditLogger, AuditConfig
-                kwargs["audit"] = AuditLogger(AuditConfig(enabled=True))
-            except Exception as exc:            # noqa: BLE001
-                warnings.warn(f"Failed to initialize audit logger: {exc}", UserWarning)
+            from mim_ai.audit import AuditLogger, AuditConfig
+            audit_config = (
+                mim_config.audit if mim_config is not None else AuditConfig(enabled=True)
+            )
+            kwargs["audit"] = (
+                AuditLogger(audit_config) if audit_config.enabled else None
+            )
 
         if config.use_normalizer_log and "normalizer_log" not in kwargs:
             try:
                 from mim_ai.audit import NormalizerLogger, NormalizerLogConfig
-                kwargs["normalizer_log"] = NormalizerLogger(NormalizerLogConfig(enabled=True))
+                log_config = (
+                    mim_config.logs if mim_config is not None
+                    else NormalizerLogConfig(enabled=True)
+                )
+                kwargs["normalizer_log"] = (
+                    NormalizerLogger(log_config) if log_config.enabled else None
+                )
             except Exception as exc:            # noqa: BLE001
                 warnings.warn(f"Failed to initialize normalizer logger: {exc}", UserWarning)
 

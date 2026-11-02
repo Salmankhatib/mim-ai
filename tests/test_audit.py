@@ -585,7 +585,7 @@ def test_jsonl_hash_chain_persists_across_restarts(tmp_path):
     second.close()
 
 
-def test_chatbot_warns_when_logger_auto_wiring_fails(monkeypatch):
+def test_chatbot_propagates_audit_logger_auto_wiring_failures(monkeypatch):
     import mim_ai.audit as audit_module
     from mim_ai.chatbot.chatbot import Chatbot
     from mim_ai.chatbot.config import ChatbotConfig
@@ -594,8 +594,188 @@ def test_chatbot_warns_when_logger_auto_wiring_fails(monkeypatch):
         raise RuntimeError("logger init failed")
 
     monkeypatch.setattr(audit_module, "AuditLogger", boom, raising=False)
-    with pytest.warns(UserWarning, match="audit"):
+    with pytest.raises(RuntimeError, match="logger init failed"):
         Chatbot.from_config(ChatbotConfig(enabled=True, use_audit_log=True))
+
+
+def test_chatbot_from_config_uses_parent_mim_subsystem_configs(tmp_path, monkeypatch):
+    import mim_ai.normalizer as normalizer_module
+    from mim_ai.chatbot.chatbot import Chatbot
+
+    config = MimConfig.from_dict({
+        "chatbot": {
+            "enabled": True,
+            "use_normalizer": True,
+            "use_audit_log": True,
+            "use_normalizer_log": True,
+        },
+        "normalizer": {
+            "rules": {
+                "arabizi_dict_path": str(tmp_path / "custom-arabizi.yaml"),
+                "skip_words_path": str(tmp_path / "custom-skip.yaml"),
+            },
+        },
+        "audit": {
+            "enabled": True,
+            "backend": "sqlite",
+            "db_path": str(tmp_path / "custom-audit.db"),
+            "retention_days": 31,
+        },
+        "logs": {
+            "enabled": True,
+            "backend": "sqlite",
+            "db_path": str(tmp_path / "custom-normalizer-log.db"),
+            "retention_days": 5,
+        },
+        "intents": {
+            "strategy": "llm",
+            "llm_prompt": "Custom parent prompt: {intents}",
+        },
+    })
+    normalizer_instance = object()
+    normalizer_configs = []
+
+    class FakeNormalizer:
+        @classmethod
+        def from_config(cls, supplied_config):
+            normalizer_configs.append(supplied_config)
+            return normalizer_instance
+
+    monkeypatch.setattr(normalizer_module, "Normalizer", FakeNormalizer)
+    bot = Chatbot.from_config(config.chatbot, mim_config=config, provider=object())
+
+    assert normalizer_configs == [config.normalizer]
+    assert bot.normalizer is normalizer_instance
+    assert bot.audit.config is config.audit
+    assert bot.normalizer_log.config is config.logs
+    assert bot.intent_strategy == "llm"
+    assert bot.intent_prompt == "Custom parent prompt: {intents}"
+    bot.audit.close()
+    bot.normalizer_log.close()
+
+
+def test_configured_postgresql_receives_audit_and_normalizer_log_rows(
+    monkeypatch,
+):
+    import re
+    import sys
+
+    class FakePostgresDatabase:
+        def __init__(self):
+            self.tables = {}
+            self.created_tables = []
+
+        def cursor(self):
+            return FakePostgresCursor(self)
+
+        def commit(self):
+            return None
+
+        def close(self):
+            return None
+
+    class FakePostgresCursor:
+        def __init__(self, database):
+            self.database = database
+            self.rowcount = -1
+            self.results = []
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def execute(self, statement, params=None):
+            if statement.lstrip().startswith("CREATE TABLE"):
+                table_match = re.search(
+                    r"CREATE TABLE IF NOT EXISTS\s+([A-Za-z_]\w*)", statement
+                )
+            else:
+                table_match = re.search(
+                    r"\b(?:INTO|FROM)\s+([A-Za-z_]\w*)", statement
+                )
+            table = table_match.group(1) if table_match else None
+            if statement.lstrip().startswith("CREATE TABLE"):
+                self.database.created_tables.append(table)
+                self.database.tables.setdefault(table, [])
+                self.rowcount = 0
+            elif statement.lstrip().startswith("DELETE FROM"):
+                self.database.tables.setdefault(table, [])
+                self.rowcount = 0
+            elif statement.lstrip().startswith("INSERT INTO"):
+                payload = json.loads(params[0])
+                self.database.tables.setdefault(table, []).append(payload)
+                self.rowcount = 1
+            elif "payload->>'line_hash'" in statement:
+                rows = self.database.tables.get(table, [])
+                self.results = [
+                    (rows[-1].get("line_hash"),) if rows else None
+                ]
+                self.results = [result for result in self.results if result is not None]
+            elif statement.lstrip().startswith("SELECT payload FROM"):
+                self.results = [
+                    (json.dumps(row),)
+                    for row in self.database.tables.get(table, [])
+                ]
+            else:
+                raise AssertionError(f"Unexpected PostgreSQL statement: {statement}")
+
+        def fetchone(self):
+            return self.results[0] if self.results else None
+
+        def fetchall(self):
+            return self.results
+
+    database = FakePostgresDatabase()
+    monkeypatch.setitem(
+        sys.modules,
+        "psycopg",
+        SimpleNamespace(connect=lambda dsn: database),
+    )
+    dsn = "postgresql://db.example/mim"
+    config = MimConfig.from_dict({
+        "audit": {
+            "enabled": True,
+            "backend": "postgresql",
+            "database_url": dsn,
+            "purge_on_start": True,
+        },
+        "logs": {
+            "enabled": True,
+            "backend": "postgresql",
+            "database_url": dsn,
+            "purge_on_start": True,
+        },
+    })
+    mim = Mim(config)
+
+    mim.audit.emit(
+        event="chat_turn",
+        trace_id="pg-audit",
+        input_text="hello",
+        output_text="salam",
+    )
+    mim.normalizer_log.emit(
+        trace_id="pg-normalizer",
+        jargon_used={"salam": 1},
+    )
+
+    audit_rows = database.tables["audit_events"]
+    normalizer_rows = database.tables["normalizer_events"]
+    assert set(database.created_tables) == {"audit_events", "normalizer_events"}
+    assert len(audit_rows) == 1
+    assert audit_rows[0]["event"] == "chat_turn"
+    assert audit_rows[0]["input_hash"]
+    assert audit_rows[0]["output_hash"]
+    assert audit_rows[0]["line_hash"]
+    assert len(normalizer_rows) == 1
+    assert normalizer_rows[0]["trace_id"] == "pg-normalizer"
+    assert json.loads(normalizer_rows[0]["jargon_used"]) == {"salam": 1}
+    assert verify_chain(config=config.audit) == (True, "chain intact")
+
+    mim.audit.close()
+    mim.normalizer_log.close()
 
 
 def test_voice_pipeline_uses_configured_normalizer_and_audit(monkeypatch):

@@ -152,6 +152,38 @@ def test_voice_does_not_construct_disabled_integrations():
     assert app._chatbot is None
 
 
+def test_mim_voice_uses_global_intent_strategy_and_prompt():
+    prompt = "Classify with this configured prompt: {intents}"
+    app = Mim(
+        MimConfig.from_dict(
+            {
+                "chatbot": {
+                    "enabled": True,
+                    "use_intents": True,
+                    "use_normalizer": False,
+                    "use_audit_log": False,
+                    "use_normalizer_log": False,
+                },
+                "intents": {
+                    "enabled": True,
+                    "strategy": "llm",
+                    "llm_prompt": prompt,
+                },
+                "voice": {
+                    "enabled": True,
+                    "use_intents": True,
+                    "use_normalizer": False,
+                    "use_audit_log": False,
+                    "use_chatbot": True,
+                },
+            }
+        )
+    )
+
+    assert app.voice.intent_strategy == "llm"
+    assert app.voice.intent_prompt == prompt
+
+
 def test_global_intent_threshold_is_used_unless_chatbot_overrides_it():
     defaulted = MimConfig.from_dict({"intents": {"threshold": 0.8}})
     overridden = MimConfig.from_dict(
