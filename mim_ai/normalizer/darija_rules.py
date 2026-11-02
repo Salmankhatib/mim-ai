@@ -204,16 +204,21 @@ def _normalize_token(
     check is O(len(token)) regardless, so ordering is about
     readability, not performance.
     """
+    if re.fullmatch(r"<URL_\d+>", token):
+        return token
+
     script = script_of(token)
 
     # ---- Arabic script -----------------------------------------------------
     if script == "arabic":
         before = token
         lookup_result = arabizi.lookup(token)
-        if lookup_result is not None:
+        if lookup_result is not None and lookup_result != token:
             report.dictionary_hits += 1
             report.jargon_used[token] = report.jargon_used.get(token, 0) + 1
             return lookup_result
+        if lookup_result is not None:
+            return token
 
         token = apply_arabic_rules(
             token,

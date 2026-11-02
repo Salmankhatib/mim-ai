@@ -230,6 +230,59 @@ def test_init_cli_defaults_to_canonical_mim_config_name(tmp_path, monkeypatch, c
     assert "Config ready at mim_config.yaml" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize(
+    ("entrypoint", "argv", "expected_message"),
+    [
+        ("init_main", ["mim-init"], "Config already exists at"),
+        ("main", ["mim", "init"], "Config already exists at"),
+    ],
+)
+def test_init_cli_reports_existing_config_without_overwriting(
+    tmp_path, monkeypatch, capsys, entrypoint, argv, expected_message
+):
+    from mim_ai.__main__ import init_main, main
+
+    config_path = tmp_path / "mim_config.yaml"
+    original_content = "keep this configuration\n"
+    config_path.write_text(original_content, encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("sys.argv", argv)
+
+    result = init_main() if entrypoint == "init_main" else main()
+
+    assert result == 0
+    assert config_path.read_text(encoding="utf-8") == original_content
+    output = capsys.readouterr().out
+    assert expected_message in output
+    assert "Config ready at" not in output
+
+
+def test_write_default_config_does_not_fall_back_to_home_on_permission_error(
+    tmp_path, monkeypatch
+):
+    from pathlib import Path
+
+    from mim_ai.config import write_default_config
+
+    target = tmp_path / "unwritable" / "mim_config.yaml"
+    home = tmp_path / "home"
+    monkeypatch.setattr(Path, "home", lambda: home)
+    original_write_text = Path.write_text
+
+    def fail_target_write(path, *args, **kwargs):
+        if path == target:
+            raise PermissionError("access denied")
+        return original_write_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "write_text", fail_target_write)
+
+    with pytest.raises(PermissionError, match="Unable to write default config"):
+        write_default_config(target)
+
+    assert not target.exists()
+    assert not (home / target.name).exists()
+
+
 def test_generated_default_config_runs_normalizer_outside_repository(
     tmp_path, monkeypatch
 ):

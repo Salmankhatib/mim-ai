@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
 from .config import write_default_config
 
@@ -11,8 +12,12 @@ def init_main() -> int:
         "path", nargs="?", default="mim_config.yaml", help="Target config path"
     )
     args = parser.parse_args()
+    already_exists = Path(args.path).is_file()
     created = write_default_config(args.path, overwrite=False)
-    print(f"Config ready at {created}")
+    if already_exists:
+        print(f"Config already exists at {created}; keeping it.")
+    else:
+        print(f"Config ready at {created}")
     return 0
 
 
@@ -30,8 +35,12 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.command == "init":
+        already_exists = Path(args.path).is_file()
         created = write_default_config(args.path, overwrite=False)
-        print(f"Created default config at {created}")
+        if already_exists:
+            print(f"Config already exists at {created}; keeping it.")
+        else:
+            print(f"Created default config at {created}")
         return 0
 
     parser.print_help()

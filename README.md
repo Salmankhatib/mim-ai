@@ -102,7 +102,7 @@ To use chat, set the API key named by `chatbot.llm_api_key_env` in your environm
 
 GitHub Actions runs Ruff and the test suites separately for each module. It also uploads a PDF test-results summary with each run. Optional SMTP delivery can be enabled using GitHub Actions secrets; see [CI setup](.github/CI.md) for the secret names and configuration.
 
-The generated config starts with tools and intent classification disabled, so chat is a regular text-completion flow by default. Set `chatbot.system_prompt` to your full custom prompt; `system_prompt_extra` and `system_prompt_file` let you add reusable instructions:
+The generated config starts with chatbot tools and chatbot intent classification disabled, so chat is a regular text-completion flow by default. Voice intent classification is separately enabled in the generated config and uses the configured registry (empty unless you provide an intent file). Set `chatbot.system_prompt` to your full custom prompt; `system_prompt_extra` and `system_prompt_file` let you add reusable instructions:
 
 ```yaml
 chatbot:
@@ -165,12 +165,12 @@ from mim_ai import anonymize
 
 result = anonymize("Mon CIN est AB58075 et mon tel est 0612345678")
 print(result.text)    # Mon CIN est [CIN_MA] et mon tel est ****345678
-print(result.entities_found)  # [EntityResult(type='CIN_MA', ...), ...]
+print(result.entities_found)  # [{'type': 'CIN_MA', 'start': 12, 'end': 19, 'score': 0.85}, ...]
 ```
 
 Built on top of Microsoft Presidio with native Moroccan recognizers:
 - **CIN patterns** (Carte d'Identité Nationale) — `AB123456`, `A123456`, etc.
-- **Moroccan phone numbers** — all mobile and fixed-line formats
+- **Moroccan phone numbers** — supported mobile and fixed-line prefixes
 - Fully configurable per-entity operators: `replace`, `mask`, `hash`, `redact`
 
 Presidio requires the English spaCy model. Install it after `mim-ai` and before using the anonymizer:

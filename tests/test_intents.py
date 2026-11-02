@@ -221,6 +221,68 @@ def test_tool_registry_filters_schemas_and_validates_arguments():
         registry.execute("lookup_order", {"order_id": 1})
 
 
+def test_tool_registry_propagates_type_errors_raised_inside_tool_function():
+    from mim_ai.chatbot.tools import ToolRegistry, ToolSpec
+
+    def buggy_tool():
+        raise TypeError("bug inside user tool")
+
+    registry = ToolRegistry()
+    registry.register(ToolSpec(
+        name="buggy_tool",
+        description="A tool with an implementation bug.",
+        params={},
+        fn=buggy_tool,
+        required=[],
+    ))
+
+    with pytest.raises(TypeError, match="bug inside user tool"):
+        registry.execute("buggy_tool", {})
+
+
+def test_chatbot_propagates_type_errors_raised_inside_tool_function():
+    from mim_ai.chatbot.tools import ToolRegistry, ToolSpec
+
+    def buggy_tool():
+        raise TypeError("bug inside user tool")
+
+    registry = ToolRegistry()
+    registry.register(ToolSpec(
+        name="buggy_tool",
+        description="A tool with an implementation bug.",
+        params={},
+        fn=buggy_tool,
+        required=[],
+    ))
+
+    class FakeProvider:
+        def chat(self, messages, tools=None):
+            return type(
+                "Resp",
+                (),
+                {
+                    "content": None,
+                    "tool_calls": [
+                        ToolCall(id="call-1", name="buggy_tool", arguments={})
+                    ],
+                    "usage": {},
+                },
+            )()
+
+    bot = Chatbot(
+        ChatbotConfig(
+            enabled=True,
+            use_intents=False,
+            enable_tools=True,
+        ),
+        provider=FakeProvider(),
+        registry=registry,
+    )
+
+    with pytest.raises(TypeError, match="bug inside user tool"):
+        bot.chat("Run the tool")
+
+
 def test_tool_registry_rejects_non_finite_numbers():
     from mim_ai.chatbot.tools import ToolRegistry, ToolSpec
 

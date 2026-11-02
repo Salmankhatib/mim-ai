@@ -267,23 +267,17 @@ class MimConfig:
 def write_default_config(path: str | Path = "mim_config.yaml", *, overwrite: bool = False) -> Path:
     """Create the canonical default config file in the target directory."""
     target = Path(path)
-    candidates = [target]
-    if not target.is_absolute():
-        candidates.append(Path.home() / target.name)
+    if target.is_file() and not overwrite:
+        return target
 
-    for candidate in candidates:
-        if candidate.exists() and not overwrite:
-            return candidate
-        try:
-            candidate.parent.mkdir(parents=True, exist_ok=True)
-            template_path = Path(__file__).with_name("default_config.yaml")
-            content = template_path.read_text(encoding="utf-8")
-            candidate.write_text(content, encoding="utf-8")
-            return candidate
-        except PermissionError:
-            continue
-
-    raise PermissionError(f"Unable to write default config to {target} or {Path.home() / target.name}")
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        template_path = Path(__file__).with_name("default_config.yaml")
+        content = template_path.read_text(encoding="utf-8")
+        target.write_text(content, encoding="utf-8")
+    except PermissionError as exc:
+        raise PermissionError(f"Unable to write default config to {target}") from exc
+    return target
 
 
 def load_config(path: str | Path | None = "mim_config.yaml") -> MimConfig:

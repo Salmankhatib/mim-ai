@@ -16,6 +16,7 @@ from mim_ai.audit.backends import (
     create_backend,
 )
 from mim_ai.audit.config import AuditConfig, NormalizerLogConfig
+from mim_ai.audit.redaction import redact
 from mim_ai.audit.verify import verify_chain
 
 
@@ -35,6 +36,18 @@ class RecordingAdapter:
 
     def purge_older_than(self, days):
         return 0
+
+
+def test_audit_redaction_reuses_strict_moroccan_phone_and_cin_patterns():
+    redacted = redact(
+        "Valid: AB12345 0612345678 +212612345678; "
+        "invalid: AB1234567 061-234-5678"
+    )
+
+    assert redacted == (
+        "Valid: <REDACTED:cin> <REDACTED:phone> <REDACTED:phone>; "
+        "invalid: AB1234567 061-234-5678"
+    )
 
 
 def test_audit_logger_accepts_database_adapter():

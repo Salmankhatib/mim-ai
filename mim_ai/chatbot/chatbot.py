@@ -23,55 +23,18 @@ import time
 import uuid
 import warnings
 from dataclasses import dataclass, field
-from typing import Protocol
 
 from ..config import MimConfig
 from .config import ChatbotConfig
-from .history import build_history_store
+from .history import HistoryStore, build_history_store
 from .llm import LLMError, LLMProvider, ToolCall, build_provider
 from .prompt_templates import resolve as resolve_prompt
-from .tools import ToolRegistry, get_default_registry
-
-
-# ---------------------------------------------------------------------------
-# History storage — pluggable
-# ---------------------------------------------------------------------------
-class HistoryStore(Protocol):
-    def get(self, session_id: str) -> list[dict]: ...
-    def append(self, session_id: str, message: dict) -> None: ...
-    def clear(self, session_id: str) -> None: ...
-
-
-class InMemoryHistoryStore:
-    """Default store. Evicts on TTL, caps at max_turns per session."""
-
-    def __init__(self, max_turns: int, ttl_seconds: int) -> None:
-        self.max_turns = max_turns
-        self.ttl = ttl_seconds
-        self._data: dict[str, tuple[float, list[dict]]] = {}
-
-    def _touch(self, sid: str) -> list[dict]:
-        now = time.time()
-        entry = self._data.get(sid)
-        if entry is None or now - entry[0] > self.ttl:
-            self._data[sid] = (now, [])
-        else:
-            self._data[sid] = (now, entry[1])
-        return self._data[sid][1]
-
-    def get(self, sid: str) -> list[dict]:
-        return list(self._touch(sid))
-
-    def append(self, sid: str, message: dict) -> None:
-        hist = self._touch(sid)
-        hist.append(message)
-        # Cap to N user turns (2 messages each: user + assistant)
-        cap = self.max_turns * 2
-        if len(hist) > cap:
-            del hist[:-cap]
-
-    def clear(self, sid: str) -> None:
-        self._data.pop(sid, None)
+from .tools import (
+    ToolArgumentTypeError,
+    ToolArgumentValueError,
+    ToolRegistry,
+    get_default_registry,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -394,7 +357,7 @@ class Chatbot:
                             call.arguments,
                             allowed_names=allowed_tool_names,
                         )
-                    except (TypeError, ValueError, PermissionError) as exc:
+                    except (ToolArgumentTypeError, ToolArgumentValueError) as exc:
                         raise LLMError(f"Invalid tool call: {exc}") from exc
                     tool_calls_made.append({
                         "name": call.name, "args": call.arguments,

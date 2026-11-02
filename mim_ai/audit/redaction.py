@@ -10,13 +10,14 @@ from __future__ import annotations
 import hashlib
 import re
 
+from ..morocco_patterns import CIN_MA_REGEX, PHONE_MA_REGEX
 
 # Conservative patterns. Order matters: run email before phone so
 # "a@b.ma" isn't partly eaten by the phone regex.
 _PATTERNS: list[tuple[str, re.Pattern]] = [
     ("email",   re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")),
-    ("phone",   re.compile(r"(?<!\d)(?:\+?212|0)[\s-]?[5-7](?:[\s-]?\d){8}(?!\d)")),
-    ("cin",     re.compile(r"(?<!\w)[A-Z]{1,2}\d{6,8}(?!\w)")),   # Moroccan CIN
+    ("phone",   re.compile(PHONE_MA_REGEX)),
+    ("cin",     re.compile(CIN_MA_REGEX)),
     ("iban",    re.compile(r"\bMA\d{2}[\s\d]{20,}\b")),
     ("url",     re.compile(r"\b(?:https?://|www\.)\S+")),
 ]

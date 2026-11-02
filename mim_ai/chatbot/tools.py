@@ -47,6 +47,14 @@ class ToolSpec:
     required:    list[str]
 
 
+class ToolArgumentTypeError(TypeError):
+    """Tool call arguments do not match the declared JSON types."""
+
+
+class ToolArgumentValueError(ValueError):
+    """Tool call arguments violate the declared JSON constraints."""
+
+
 class ToolRegistry:
     def __init__(self) -> None:
         self._tools: dict[str, ToolSpec] = {}
@@ -113,12 +121,7 @@ class ToolRegistry:
         if allowed_names is not None and name not in allowed_names:
             raise PermissionError(f"Tool {name!r} is not allowed for this intent")
         _validate_arguments(spec, arguments)
-        try:
-            result = spec.fn(**arguments)
-        except TypeError as e:
-            return json.dumps({"error": f"Bad arguments: {e}"})
-        except Exception as e:                     # noqa: BLE001
-            return json.dumps({"error": f"{type(e).__name__}: {e}"})
+        result = spec.fn(**arguments)
         if not isinstance(result, str):
             result = json.dumps(result, ensure_ascii=False)
         return result
@@ -146,20 +149,20 @@ class ToolRegistry:
 
 def _validate_arguments(spec: ToolSpec, arguments: dict) -> None:
     if not isinstance(arguments, dict):
-        raise TypeError("Tool arguments must be a JSON object")
+        raise ToolArgumentTypeError("Tool arguments must be a JSON object")
     if not all(isinstance(name, str) for name in arguments):
-        raise TypeError("Tool argument names must be strings")
+        raise ToolArgumentTypeError("Tool argument names must be strings")
     provided = set(arguments)
     declared = set(spec.params)
     missing = set(spec.required) - provided
     extra = provided - declared
     if missing:
-        raise ValueError(
+        raise ToolArgumentValueError(
             f"Tool {spec.name!r} is missing required arguments: "
             f"{', '.join(sorted(missing))}"
         )
     if extra:
-        raise ValueError(
+        raise ToolArgumentValueError(
             f"Tool {spec.name!r} received unexpected arguments: "
             f"{', '.join(sorted(extra))}"
         )
@@ -171,7 +174,7 @@ def _validate_value(
     tool_name: str, argument_name: str, value: Any, schema: dict[str, Any]
 ) -> None:
     if not isinstance(schema, dict):
-        raise ValueError(
+        raise ToolArgumentValueError(
             f"Tool {tool_name!r} argument {argument_name!r} has an invalid schema"
         )
     expected_type = schema.get("type")
@@ -181,30 +184,30 @@ def _validate_value(
         )
         checks = [_JSON_TYPE_CHECKS.get(item) for item in expected_types]
         if not checks or any(check is None for check in checks):
-            raise ValueError(
+            raise ToolArgumentValueError(
                 f"Tool {tool_name!r} argument {argument_name!r} uses "
                 f"unsupported JSON type {expected_type!r}"
             )
         if not any(check(value) for check in checks if check is not None):
-            raise TypeError(
+            raise ToolArgumentTypeError(
                 f"Tool {tool_name!r} argument {argument_name!r} "
                 f"must be {' or '.join(expected_types)}"
             )
     if "enum" in schema and value not in schema["enum"]:
-        raise ValueError(
+        raise ToolArgumentValueError(
             f"Tool {tool_name!r} argument {argument_name!r} is not an allowed value"
         )
     if isinstance(value, dict):
         properties = schema.get("properties", {})
         required = schema.get("required", [])
         if not isinstance(properties, dict) or not isinstance(required, list):
-            raise ValueError(
+            raise ToolArgumentValueError(
                 f"Tool {tool_name!r} argument {argument_name!r} has an invalid object schema"
             )
         missing = set(required) - value.keys()
         extra = value.keys() - properties.keys()
         if missing or (extra and schema.get("additionalProperties") is False):
-            raise ValueError(
+            raise ToolArgumentValueError(
                 f"Tool {tool_name!r} argument {argument_name!r} has invalid object keys"
             )
         for key, item in value.items():
@@ -214,11 +217,11 @@ def _validate_value(
                 )
     if isinstance(value, list) and isinstance(schema.get("items"), dict):
         if len(value) < schema.get("minItems", 0):
-            raise ValueError(
+            raise ToolArgumentValueError(
                 f"Tool {tool_name!r} argument {argument_name!r} has too few items"
             )
         if len(value) > schema.get("maxItems", float("inf")):
-            raise ValueError(
+            raise ToolArgumentValueError(
                 f"Tool {tool_name!r} argument {argument_name!r} has too many items"
             )
         for index, item in enumerate(value):
@@ -227,28 +230,28 @@ def _validate_value(
             )
     if isinstance(value, str):
         if len(value) < schema.get("minLength", 0):
-            raise ValueError(
+            raise ToolArgumentValueError(
                 f"Tool {tool_name!r} argument {argument_name!r} is too short"
             )
         if len(value) > schema.get("maxLength", float("inf")):
-            raise ValueError(
+            raise ToolArgumentValueError(
                 f"Tool {tool_name!r} argument {argument_name!r} is too long"
             )
         if "pattern" in schema and re.search(schema["pattern"], value) is None:
-            raise ValueError(
+            raise ToolArgumentValueError(
                 f"Tool {tool_name!r} argument {argument_name!r} has an invalid format"
             )
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         if isinstance(value, float) and not math.isfinite(value):
-            raise ValueError(
+            raise ToolArgumentValueError(
                 f"Tool {tool_name!r} argument {argument_name!r} must be finite"
             )
         if value < schema.get("minimum", float("-inf")):
-            raise ValueError(
+            raise ToolArgumentValueError(
                 f"Tool {tool_name!r} argument {argument_name!r} is below minimum"
             )
         if value > schema.get("maximum", float("inf")):
-            raise ValueError(
+            raise ToolArgumentValueError(
                 f"Tool {tool_name!r} argument {argument_name!r} is above maximum"
             )
 

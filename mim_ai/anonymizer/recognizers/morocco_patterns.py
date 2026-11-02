@@ -3,6 +3,8 @@ from __future__ import annotations
 from presidio_analyzer import PatternRecognizer
 from presidio_analyzer.pattern_recognizer import Pattern
 
+from mim_ai.morocco_patterns import CIN_MA_REGEX, PHONE_MA_REGEX
+
 
 class CINRecognizer(PatternRecognizer):
     def __init__(self) -> None:
@@ -12,7 +14,7 @@ class CINRecognizer(PatternRecognizer):
             patterns=[
                 Pattern(
                     name="cin_ma_pattern",
-                    regex=r"\b[A-Z]{1,2}\d{5,6}\b",
+                    regex=CIN_MA_REGEX,
                     score=0.85,
                 )
             ],
@@ -28,7 +30,7 @@ class MAPhoneRecognizer(PatternRecognizer):
             patterns=[
                 Pattern(
                     name="moroccan_phone_pattern",
-                    regex=r"(?<!\d)(?:\+212|0)[2567]\d{8}(?!\d)",
+                    regex=PHONE_MA_REGEX,
                     score=0.9,
                 )
             ],

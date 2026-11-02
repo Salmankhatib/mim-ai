@@ -34,6 +34,16 @@ def norm_aggressive():
 # ---------------------------------------------------------------------------
 class TestLayer1Safety:
 
+    def test_url_placeholders_do_not_count_as_oov_or_jargon(self, norm):
+        normalized, report = norm.normalize(
+            "https://example.com/path www.example.ma", return_report=True
+        )
+
+        assert normalized == "https://example.com/path www.example.ma"
+        assert report.oov_arabizi is False
+        assert report.jargon_skipped == {}
+        assert report.jargon_used == {}
+
     def test_whitespace_collapsed(self, norm):
         out = norm.normalize("salam    kho    labas")
         assert out == "salam kho labas"
@@ -172,6 +182,23 @@ class TestArabicRules:
 # Code-switching — the real-world case
 # ---------------------------------------------------------------------------
 class TestCodeSwitching:
+
+    def test_chatbot_history_exports_use_the_shared_history_implementations(self):
+        from mim_ai.chatbot import HistoryStore, InMemoryHistoryStore
+        from mim_ai.chatbot.history import (
+            HistoryStore as SharedHistoryStore,
+            InMemoryHistoryStore as SharedInMemoryHistoryStore,
+        )
+
+        assert HistoryStore is SharedHistoryStore
+        assert InMemoryHistoryStore is SharedInMemoryHistoryStore
+
+    def test_arabic_identity_dictionary_matches_do_not_count_as_hits(self, norm):
+        normalized, report = norm.normalize("سلام", return_report=True)
+
+        assert normalized == "سلام"
+        assert report.dictionary_hits == 0
+        assert report.jargon_used == {}
 
     def test_canonical_darija_variant_bank(self, norm):
         assert norm.normalize("b8it nchouf daaba") == "bghit nchouf daba"

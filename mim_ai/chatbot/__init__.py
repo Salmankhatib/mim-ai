@@ -12,11 +12,15 @@ def __getattr__(name: str):
     if name == "ChatbotConfig":
         from .config import ChatbotConfig
         return ChatbotConfig
-    if name in {"Chatbot", "ChatReply", "HistoryStore", "InMemoryHistoryStore"}:
-        from .chatbot import Chatbot, ChatReply, HistoryStore, InMemoryHistoryStore
+    if name in {"Chatbot", "ChatReply"}:
+        from .chatbot import Chatbot, ChatReply
         return {
             "Chatbot": Chatbot,
             "ChatReply": ChatReply,
+        }[name]
+    if name in {"HistoryStore", "InMemoryHistoryStore"}:
+        from .history import HistoryStore, InMemoryHistoryStore
+        return {
             "HistoryStore": HistoryStore,
             "InMemoryHistoryStore": InMemoryHistoryStore,
         }[name]
