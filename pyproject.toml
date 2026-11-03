@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,20 +8,20 @@ version = "0.1.0"
 description = "A configuration-first Python SDK for building production-grade Moroccan Darija AI applications — normalizer, anonymizer, chatbot, voice pipeline, and Law 09-08 audit trail."
 
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.9"
 authors = [
     { name = "Salman KHATIB", email = "slamankhatib06@gmail.com" },
 ]
 keywords = [
-    "nlp", "darija", "arabic", "moroccan", "chatbot",
-    "voice-agent", "stt", "tts", "anonymizer", "audit",
-    "law-09-08", "iso-42001", "arabizi", "mistral", "mntra"
+    "darija", "arabic", "moroccan", "chatbot",
+    "voice-agent", "stt", "tts", "anonymizer", "audit", 
+    "arabizi", "normalizer"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Natural Language :: Arabic",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
