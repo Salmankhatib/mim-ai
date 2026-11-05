@@ -264,22 +264,18 @@ A FastAPI example is included in [examples/project_example.py](examples/project_
 
 ## 🔖 PyPI Release
 
-Before publishing a release candidate:
+Configure PyPI Trusted Publishing once for this repository:
+
+On PyPI, add a Trusted Publisher for owner `Salmankhatib`, repository `mim-ai`,
+workflow `publish.yml`, and environment `pypi`. The workflow uses PyPI's OIDC
+publishing; no API token is needed.
+
+To publish a release, update the version in `pyproject.toml`, then create and
+push the matching version tag in one command:
 
 ```bash
-python -m pip install --upgrade build twine
-python -m build
-python -m twine check dist/*
+git tag v0.1.1 && git push origin v0.1.1
 ```
 
-Upload to TestPyPI first:
-
-```bash
-python -m twine upload --repository testpypi dist/*
-```
-
-Then to PyPI:
-
-```bash
-python -m twine upload dist/*
-```
+The tag must match the package version. GitHub Actions builds and checks the
+distributions before publishing them to PyPI.
